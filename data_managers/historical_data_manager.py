@@ -1,13 +1,15 @@
 import requests
 import bs4
-from exceptions.custom_exceptions import InvalidDataSourceError
+from exceptions.custom_exceptions import InvalidMarketIndexError
+
 
 class HistoricalDataManager:
 
     def __init__(self, index="S&P500"):
         """ Constructor class that instantiates the historical data manager.
 
-        :param index: The market index to be used in the backtest.
+        :param index: Label for the market index to be used in the backtest.
+            Currently supported index labels: 'S&P500'.
         """
         self.index = index
 
@@ -33,6 +35,6 @@ class HistoricalDataManager:
                     ticker = ticker.replace('.', '-')
                 tickers.append(ticker)
         else:
-            raise InvalidDataSourceError(self.index)
+            raise InvalidMarketIndexError(self.index)
 
         return tickers
