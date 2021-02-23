@@ -1,6 +1,7 @@
 import requests
 import bs4
 from exceptions.custom_exceptions import InvalidMarketIndexError
+import logging as log
 
 
 class HistoricalDataManager:
@@ -34,7 +35,9 @@ class HistoricalDataManager:
                 if "." in ticker:
                     ticker = ticker.replace('.', '-')
                 tickers.append(ticker)
+            log.info(f"Successfully found list of {len(tickers)} tickers in market index '{self.index}'")
         else:
+            # Raise an error if the provided index is not recognised.
             raise InvalidMarketIndexError(self.index)
 
         return tickers
