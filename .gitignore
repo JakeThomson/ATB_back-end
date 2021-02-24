@@ -131,3 +131,4 @@ dmypy.json
 # PyCharm project stuff
 .idea
 /playground.py
+/historical_data/market_index_lists/

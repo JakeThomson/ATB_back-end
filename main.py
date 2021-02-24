@@ -12,4 +12,4 @@ if __name__ == '__main__':
 
     hist_data_mgr = HistoricalDataManager("S&P500")
     tickers = hist_data_mgr.grab_tickers()
-    hist_data_mgr.download_historical_data_to_CSV(tickers)
+    hist_data_mgr.threaded_data_download(tickers)
