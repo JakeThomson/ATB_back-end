@@ -11,6 +11,7 @@ import os
 import re
 import pickle
 import time
+from data_handlers import date_handler
 
 log.getLogger("urllib3").setLevel(log.WARNING)
 
@@ -20,16 +21,19 @@ class HistoricalDataManager:
     num_tickers = 0
 
     def __init__(self, market_index="S&P500", max_threads=4, start_date=dt.datetime(2000, 1, 1),
-                 end_date=dt.datetime.today().date()):
+                 end_date=(dt.datetime.today() - dt.timedelta(days=1))):
         """ Constructor class that instantiates the historical data manager.
 
         :param market_index: Label for the market index to be used in the backtest.
             Currently supported index labels: 'S&P500'.
+        :param max_threads: The max number of threads to be used to download data.
+        :param start_date: The date to download data from.
+        :param end_date: The date to download data up to (Default is yesterday).
         """
         self.market_index = market_index
         self.max_threads = max_threads
-        self.start_date = start_date
-        self.end_date = end_date
+        self.start_date = date_handler.cleanse_date(start_date, 1)
+        self.end_date = date_handler.cleanse_date(end_date, -1)
 
     def grab_tickers(self):
         """ Returns a list of tickers that are a part of the index stated in self.index.
@@ -87,7 +91,24 @@ class HistoricalDataManager:
         self.num_tickers = len(tickers)
         return tickers
 
-    def download_historical_data_to_csv(self, tickers, thread_id):
+    def __csv_up_to_date(self, ticker):
+        """ Opens the ticker's CSV file and checks to see if the data runs up to the date set in self.start_date,
+        which is yesterday by default due to that being guaranteed to be the last full day of data.
+
+        :param ticker: A string containing a company ticker
+        :return: True if CSV covers the dates, False if not.
+        """
+        # Load the ticker data, look at the last index and compare the date to self.end_date.
+        historical_df = pd.read_csv(f"historical_data/{self.market_index}/{ticker}.csv")
+        last_date = historical_df.iloc[historical_df.last_valid_index(), 0]
+        last_date = dt.datetime.strptime(last_date, "%Y-%m-%d")
+
+        if last_date.date() < self.end_date.date():
+            return False, last_date
+        else:
+            return True, None
+
+    def __download_historical_data_to_csv(self, tickers, thread_id):
         """ Gets historical data from Yahoo using a slice of the tickers provided in the tickers list.
 
         :param tickers: A list of company tickers.
@@ -96,19 +117,31 @@ class HistoricalDataManager:
         """
 
         # Get a portion of tickers for this thread to work with.
-        tickers = split_list(tickers, self.max_threads, thread_id)
+        slice_of_tickers = split_list(tickers, self.max_threads, thread_id)
 
         # Iterate through ticker list and download historical data into a CSV if it does not already exist.
-        for ticker in tickers:
+        for ticker in slice_of_tickers:
             if not os.path.exists(f"historical_data/{self.market_index}/{ticker}.csv"):
+                percentage = round(len(os.listdir(f'./historical_data/{self.market_index}')) / self.num_tickers * 100,
+                                   2)
+                log.debug(
+                    f"Saving {(ticker + ' data').ljust(13)} ({len(os.listdir(f'historical_data/{self.market_index}'))}"
+                    f"/{self.num_tickers} - {percentage}%)"
+                )
                 df = web.DataReader(ticker, "yahoo", self.start_date, self.end_date)
                 df = df.reindex(columns=["Open", "High", "Low", "Close", "Volume", "Adj Close"])
                 df.columns = ["open", "high", "low", "close", "volume", "adj close"]
                 df.to_csv(f"historical_data/{self.market_index}/{ticker}.csv", mode="a", header=False)
-                percentage = round(len(os.listdir(f'./historical_data/{self.market_index}')) / self.num_tickers * 100,
-                                   2)
-                log.debug(f"Saved {(ticker + ' data').ljust(13)} ({len(os.listdir(f'historical_data/{self.market_index}'))}"
-                          f"/{self.num_tickers} - {percentage}%)")
+            # If CSV already exists, check to see if it has data up until self.end_date.
+            else:
+                up_to_date, last_date_in_csv = self.__csv_up_to_date(ticker)
+                if not up_to_date:
+                    # If not up to date, then download the missing data and append to CSV.
+                    log.debug(f"Updating {ticker} data")
+                    df = web.DataReader(ticker, "yahoo", last_date_in_csv, self.end_date)
+                    df = df.reindex(columns=["Open", "High", "Low", "Close", "Volume", "Adj Close"])
+                    df.columns = ["open", "high", "low", "close", "volume", "adj close"]
+                    df.to_csv(f"historical_data/{self.market_index}/{ticker}.csv", mode="a", header=False)
 
     def threaded_data_download(self, tickers):
         """ Downloads historical data using multiple threads, max threads are set in the class attributes.
@@ -125,7 +158,7 @@ class HistoricalDataManager:
 
         # Create a number of threads to download data concurrently, to speed up the process.
         for thread_id in range(0, self.max_threads):
-            download_thread = threading.Thread(target=self.download_historical_data_to_csv,
+            download_thread = threading.Thread(target=self.__download_historical_data_to_csv,
                                                args=(tickers, thread_id))
             download_threads.append(download_thread)
             download_thread.start()

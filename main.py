@@ -1,4 +1,4 @@
-from data_managers.historical_data_manager import HistoricalDataManager
+from data_handlers.historical_data_handler import HistoricalDataManager
 import logging
 
 
