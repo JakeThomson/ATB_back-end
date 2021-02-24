@@ -1,6 +1,7 @@
 import math
 import threading
 import datetime as dt
+import pandas as pd
 import pandas_datareader as web
 import requests
 import bs4
@@ -9,6 +10,7 @@ import logging as log
 import os
 import re
 import pickle
+import time
 
 log.getLogger("urllib3").setLevel(log.WARNING)
 
@@ -17,7 +19,7 @@ class HistoricalDataManager:
 
     num_tickers = 0
 
-    def __init__(self, market_index="S&P500", max_threads=4, start_date=dt.datetime(2015, 1, 1),
+    def __init__(self, market_index="S&P500", max_threads=4, start_date=dt.datetime(2000, 1, 1),
                  end_date=dt.datetime.today().date()):
         """ Constructor class that instantiates the historical data manager.
 
@@ -51,7 +53,6 @@ class HistoricalDataManager:
                     if dt.datetime.strptime(match.group(1), "%Y-%m-%d").date() == dt.datetime.today().date():
                         with open(filepath + filename, "rb") as f:
                             tickers = pickle.load(f)
-
                         self.num_tickers = len(tickers)
                         log.info(f"Successfully obtained list of {self.num_tickers} tickers in "
                                  f"market index '{self.market_index}' from cache")
@@ -73,7 +74,7 @@ class HistoricalDataManager:
                     ticker = ticker.replace('.', '-')
                 tickers.append(ticker)
 
-            filename = self.market_index + "_" + str(dt.datetime.today().date())
+            filename = self.market_index + "_" + str(dt.datetime.today().date()) + ".pickle"
             with open(filepath + filename, "wb") as f:
                 pickle.dump(tickers, f)
 
@@ -86,7 +87,7 @@ class HistoricalDataManager:
         self.num_tickers = len(tickers)
         return tickers
 
-    def download_historical_data_to_CSV(self, tickers, thread_id):
+    def download_historical_data_to_csv(self, tickers, thread_id):
         """ Gets historical data from Yahoo using a slice of the tickers provided in the tickers list.
 
         :param tickers: A list of company tickers.
@@ -94,11 +95,10 @@ class HistoricalDataManager:
         :return: none
         """
 
+        # Get a portion of tickers for this thread to work with.
         tickers = split_list(tickers, self.max_threads, thread_id)
 
-        if not os.path.exists(f"historical_data/{self.market_index}"):
-            os.makedirs(f"historical_data/{self.market_index}")
-
+        # Iterate through ticker list and download historical data into a CSV if it does not already exist.
         for ticker in tickers:
             if not os.path.exists(f"historical_data/{self.market_index}/{ticker}.csv"):
                 df = web.DataReader(ticker, "yahoo", self.start_date, self.end_date)
@@ -107,7 +107,7 @@ class HistoricalDataManager:
                 df.to_csv(f"historical_data/{self.market_index}/{ticker}.csv", mode="a", header=False)
                 percentage = round(len(os.listdir(f'./historical_data/{self.market_index}')) / self.num_tickers * 100,
                                    2)
-                log.debug(f"Grabbed {ticker} data \t\t({len(os.listdir(f'historical_data/{self.market_index}'))}"
+                log.debug(f"Saved {(ticker + ' data').ljust(13)} ({len(os.listdir(f'historical_data/{self.market_index}'))}"
                           f"/{self.num_tickers} - {percentage}%)")
 
     def threaded_data_download(self, tickers):
@@ -117,20 +117,24 @@ class HistoricalDataManager:
         :return: none
         """
 
+        download_threads = []
+        start_time = time.time()
+
         if not os.path.exists(f"historical_data/{self.market_index}"):
             os.makedirs(f"historical_data/{self.market_index}")
 
-        download_threads = []
-
+        # Create a number of threads to download data concurrently, to speed up the process.
         for thread_id in range(0, self.max_threads):
-            download_thread = threading.Thread(target=self.download_historical_data_to_CSV,
+            download_thread = threading.Thread(target=self.download_historical_data_to_csv,
                                                args=(tickers, thread_id))
             download_threads.append(download_thread)
             download_thread.start()
 
+        # Wait for all threads to finish downloading data before continuing.
         for download_thread in download_threads:
             download_thread.join()
-        log.info("DOWNLOADS COMPLETE")
+        total_time = dt.timedelta(seconds=(time.time() - start_time))
+        log.info(f"Downloads completed in: {total_time}")
 
 
 def split_list(tickers, num_portions, portion_id):
@@ -142,7 +146,6 @@ def split_list(tickers, num_portions, portion_id):
     :return: The required section of a list.
     """
 
-    # TODO: Try and make this more accurate
     section = math.floor(len(tickers) / num_portions)
     beginning_index = section * portion_id
     if portion_id + 1 < num_portions:
@@ -150,5 +153,5 @@ def split_list(tickers, num_portions, portion_id):
     else:
         end_index = len(tickers) - 1
     log.debug(
-        f"Thread-{portion_id} downloading {end_index - beginning_index + 1} tickers ({beginning_index}-{end_index})")
+        f"Thread-{portion_id} handling {end_index - beginning_index + 1} tickers ({beginning_index}-{end_index})")
     return tickers[beginning_index:(end_index + 1)]
