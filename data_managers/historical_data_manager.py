@@ -1,6 +1,7 @@
 import math
 import threading
 import datetime as dt
+import pandas_datareader as web
 import requests
 import bs4
 from exceptions.custom_exceptions import InvalidMarketIndexError
@@ -9,17 +10,24 @@ import os
 import re
 import pickle
 
+log.getLogger("urllib3").setLevel(log.WARNING)
+
 
 class HistoricalDataManager:
 
-    def __init__(self, index="S&P500", max_threads=4):
+    num_tickers = 0
+
+    def __init__(self, market_index="S&P500", max_threads=4, start_date=dt.datetime(2015, 1, 1),
+                 end_date=dt.datetime.today().date()):
         """ Constructor class that instantiates the historical data manager.
 
-        :param index: Label for the market index to be used in the backtest.
+        :param market_index: Label for the market index to be used in the backtest.
             Currently supported index labels: 'S&P500'.
         """
-        self.index = index
+        self.market_index = market_index
         self.max_threads = max_threads
+        self.start_date = start_date
+        self.end_date = end_date
 
     def grab_tickers(self):
         """ Returns a list of tickers that are a part of the index stated in self.index.
@@ -28,29 +36,30 @@ class HistoricalDataManager:
         """
 
         tickers = []
-        log.debug(f"Looking for tickers in the market index '{self.index}'")
+        log.debug(f"Looking for tickers in the market index '{self.market_index}'")
 
         # Determining the source of the list of tickers.
-        if self.index == "S&P500":
+        if self.market_index == "S&P500":
 
             # Look for ticker list in cache.
-            pattern = re.compile(f"^S&P500_(.*)\.pickle")
-            dir = "historical_data/market_index_lists/"
-            for filename in os.listdir(dir):
+            pattern = re.compile(f"^S&P500_(.*)\\.pickle")
+            filepath = "historical_data/market_index_lists/"
+            for filename in os.listdir(filepath):
                 match = pattern.match(filename)
                 if match:
                     # Use cache if it is up to date.
                     if dt.datetime.strptime(match.group(1), "%Y-%m-%d").date() == dt.datetime.today().date():
-                        with open(dir + filename, "rb") as f:
+                        with open(filepath + filename, "rb") as f:
                             tickers = pickle.load(f)
 
-                        log.info(f"Successfully obtained list of {len(tickers)} tickers in "
-                                 f"market index '{self.index}' from cache")
+                        self.num_tickers = len(tickers)
+                        log.info(f"Successfully obtained list of {self.num_tickers} tickers in "
+                                 f"market index '{self.market_index}' from cache")
                         return tickers
                     # Remove cache file if it is not up to date, and proceed to re-download from Wikipedia.
                     else:
-                        log.debug(f"Updating cache file for market index '{self.index}'")
-                        os.remove(dir + filename)
+                        log.debug(f"Updating cache file for market index '{self.market_index}'")
+                        os.remove(filepath + filename)
 
             # Scrape list of S&P500 companies from Wikipedia.
             resp = requests.get("https://en.wikipedia.org/wiki/List_of_S%26P_500_companies")
@@ -64,17 +73,42 @@ class HistoricalDataManager:
                     ticker = ticker.replace('.', '-')
                 tickers.append(ticker)
 
-            filename = self.index+"_"+str(dt.datetime.today().date())
-            with open(dir+filename, "wb") as f:
+            filename = self.market_index + "_" + str(dt.datetime.today().date())
+            with open(filepath + filename, "wb") as f:
                 pickle.dump(tickers, f)
 
-            log.info(f"Successfully obtained list of {len(tickers)} tickers in market index '{self.index}' "
+            log.info(f"Successfully obtained list of {len(tickers)} tickers in market index '{self.market_index}' "
                      f"from Wikipedia")
         else:
             # Raise an error if the provided index is not recognised.
-            raise InvalidMarketIndexError(self.index)
+            raise InvalidMarketIndexError(self.market_index)
 
+        self.num_tickers = len(tickers)
         return tickers
+
+    def download_historical_data_to_CSV(self, tickers, thread_id):
+        """ Gets historical data from Yahoo using a slice of the tickers provided in the tickers list.
+
+        :param tickers: A list of company tickers.
+        :param thread_id: The ID of the thread that called this function.
+        :return: none
+        """
+
+        tickers = split_list(tickers, self.max_threads, thread_id)
+
+        if not os.path.exists(f"historical_data/{self.market_index}"):
+            os.makedirs(f"historical_data/{self.market_index}")
+
+        for ticker in tickers:
+            if not os.path.exists(f"historical_data/{self.market_index}/{ticker}.csv"):
+                df = web.DataReader(ticker, "yahoo", self.start_date, self.end_date)
+                df = df.reindex(columns=["Open", "High", "Low", "Close", "Volume", "Adj Close"])
+                df.columns = ["open", "high", "low", "close", "volume", "adj close"]
+                df.to_csv(f"historical_data/{self.market_index}/{ticker}.csv", mode="a", header=False)
+                percentage = round(len(os.listdir(f'./historical_data/{self.market_index}')) / self.num_tickers * 100,
+                                   2)
+                log.debug(f"Grabbed {ticker} data \t\t({len(os.listdir(f'historical_data/{self.market_index}'))}"
+                          f"/{self.num_tickers} - {percentage}%)")
 
     def threaded_data_download(self, tickers):
         """ Downloads historical data using multiple threads, max threads are set in the class attributes.
@@ -83,19 +117,20 @@ class HistoricalDataManager:
         :return: none
         """
 
-        if not os.path.exists(f"historical_data/{self.index}"):
-            os.makedirs(f"historical_data/{self.index}")
+        if not os.path.exists(f"historical_data/{self.market_index}"):
+            os.makedirs(f"historical_data/{self.market_index}")
 
         download_threads = []
 
         for thread_id in range(0, self.max_threads):
-            download_thread = threading.Thread()
+            download_thread = threading.Thread(target=self.download_historical_data_to_CSV,
+                                               args=(tickers, thread_id))
             download_threads.append(download_thread)
             download_thread.start()
-            download_thread.list_section = split_list(tickers, self.max_threads, thread_id)
 
         for download_thread in download_threads:
             download_thread.join()
+        log.info("DOWNLOADS COMPLETE")
 
 
 def split_list(tickers, num_portions, portion_id):
@@ -114,5 +149,6 @@ def split_list(tickers, num_portions, portion_id):
         end_index = beginning_index + section - 1
     else:
         end_index = len(tickers) - 1
-    log.debug(f"Thread-{portion_id} downloading {end_index-beginning_index+1} tickers ({beginning_index}-{end_index})")
-    return tickers[beginning_index:(end_index+1)]
+    log.debug(
+        f"Thread-{portion_id} downloading {end_index - beginning_index + 1} tickers ({beginning_index}-{end_index})")
+    return tickers[beginning_index:(end_index + 1)]
