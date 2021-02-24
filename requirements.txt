@@ -6,3 +6,5 @@ idna==2.10
 requests==2.25.1
 soupsieve==2.2
 urllib3==1.26.3
+pandas~=1.2.2
+holidays~=0.10.5.2
