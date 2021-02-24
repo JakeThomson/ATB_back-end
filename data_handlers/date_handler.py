@@ -40,16 +40,17 @@ def cleanse_date(date, direction=1):
     :return date: A valid datetime object.
     """
 
-    if direction != (1 or -1):
+    if direction == 1 or direction == -1:
+        initial_date = date
+        invalid = is_holiday(date) or is_weekend(date)
+
+        # Keep adjusting date until it is valid.
+        while invalid:
+            if is_holiday(date) or is_weekend(date):
+                date = date + (dt.timedelta(days=1) * direction)
+            else:
+                invalid = False
+                log.info(str(initial_date.date()) + " is an invalid date, changed to " + str(date.date()))
+        return date
+    else:
         raise ValueError("Direction argument in cleanse_date method can only be 1 or -1.")
-
-    initial_date = date
-    valid = is_holiday(date) or is_weekend(date)
-
-    while not valid:
-        if is_holiday(date) or is_weekend(date):
-            date = date + (dt.timedelta(days=1) * direction)
-        else:
-            valid = True
-            log.info(str(initial_date.date()) + " is an invalid date, changed to " + str(date.date()))
-    return date
