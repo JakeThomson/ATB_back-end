@@ -1,3 +1,7 @@
+from data_validators.historical_data_validator import HistoricalDataValidator
+from data_validators import date_validator
+from exceptions.custom_exceptions import InvalidMarketIndexError
+
 import math
 import threading
 import datetime as dt
@@ -5,13 +9,12 @@ import pandas as pd
 import pandas_datareader as web
 import requests
 import bs4
-from exceptions.custom_exceptions import InvalidMarketIndexError
 import logging as log
 import os
 import re
 import pickle
 import time
-from data_handlers import date_handler
+
 
 log.getLogger("urllib3").setLevel(log.WARNING)
 
@@ -32,8 +35,8 @@ class HistoricalDataManager:
         """
         self.market_index = market_index
         self.max_threads = max_threads
-        self.start_date = date_handler.cleanse_date(start_date, 1)
-        self.end_date = date_handler.cleanse_date(end_date, -1)
+        self.start_date = date_validator.validate_date(start_date, 1)
+        self.end_date = date_validator.validate_date(end_date, -1)
 
     def grab_tickers(self):
         """ Returns a list of tickers that are a part of the index stated in self.index.
@@ -121,27 +124,52 @@ class HistoricalDataManager:
 
         # Iterate through ticker list and download historical data into a CSV if it does not already exist.
         for ticker in slice_of_tickers:
-            if not os.path.exists(f"historical_data/{self.market_index}/{ticker}.csv"):
-                percentage = round(len(os.listdir(f'./historical_data/{self.market_index}')) / self.num_tickers * 100,
-                                   2)
-                log.debug(
-                    f"Saving {(ticker + ' data').ljust(13)} ({len(os.listdir(f'historical_data/{self.market_index}'))}"
-                    f"/{self.num_tickers} - {percentage}%)"
-                )
-                df = web.DataReader(ticker, "yahoo", self.start_date, self.end_date)
-                df = df.reindex(columns=["Open", "High", "Low", "Close", "Volume", "Adj Close"])
-                df.columns = ["open", "high", "low", "close", "volume", "adj close"]
-                df.to_csv(f"historical_data/{self.market_index}/{ticker}.csv", mode="a", header=False)
+            file_path = f"historical_data/{self.market_index}/{ticker}.csv"
+            invalid_file_path = f"historical_data/{self.market_index}/INVALID/{ticker}.csv"
+
+            if not os.path.exists(file_path):
+                # Check to see if CSV has been placed in the invalid folder previously.
+                if os.path.exists(invalid_file_path):
+                    log.warning(f"{ticker} has previously been identified as invalid, skipping")
+                    continue
+
+                percentage = \
+                    round(len(os.listdir(f'./historical_data/{self.market_index}')) / self.num_tickers * 100, 2)
+                progress = f"{len(os.listdir(f'historical_data/{self.market_index}'))}/{self.num_tickers} - {percentage}%)"
+
+                # Download data from Yahoo finance using pandas_datareader.
+                log.debug(f"Saving {(ticker + ' data').ljust(13)} ({progress}%)")
+                historical_df = web.DataReader(ticker, "yahoo", self.start_date, self.end_date)
+                historical_df = historical_df.reindex(columns=["Open", "High", "Low", "Close", "Volume", "Adj Close"])
+                historical_df.columns = ["open", "high", "low", "close", "volume", "adj close"]
+                historical_df.ticker = ticker
+
+                # Validate data, and save as CSV to the appropriate locations.
+                valid = HistoricalDataValidator(historical_df).validate_data()
+                if valid:
+                    historical_df.to_csv(file_path, mode="a", header=False)
+                else:
+                    historical_df.to_csv(invalid_file_path, mode="a", header=False)
             # If CSV already exists, check to see if it has data up until self.end_date.
             else:
                 up_to_date, last_date_in_csv = self.__csv_up_to_date(ticker)
                 if not up_to_date:
-                    # If not up to date, then download the missing data and append to CSV.
+                    # If not up to date, then download the missing data.
                     log.debug(f"Updating {ticker} data")
-                    df = web.DataReader(ticker, "yahoo", last_date_in_csv, self.end_date)
-                    df = df.reindex(columns=["Open", "High", "Low", "Close", "Volume", "Adj Close"])
-                    df.columns = ["open", "high", "low", "close", "volume", "adj close"]
-                    df.to_csv(f"historical_data/{self.market_index}/{ticker}.csv", mode="a", header=False)
+                    historical_df = web.DataReader(ticker, "yahoo", last_date_in_csv, self.end_date)
+                    historical_df = historical_df.reindex(
+                        columns=["Open", "High", "Low", "Close", "Volume", "Adj Close"])
+                    historical_df.columns = ["open", "high", "low", "close", "volume", "adj close"]
+                    historical_df.ticker = ticker
+
+                    # Validate data, and append new data onto existing CSVs.
+                    valid = HistoricalDataValidator(historical_df).validate_data()
+                    if valid:
+                        historical_df.to_csv(file_path, mode="a", header=False)
+                    else:
+                        # If invalid, move the original 'valid' file before appending onto it.
+                        os.rename(file_path, invalid_file_path)
+                        historical_df.to_csv(invalid_file_path, mode="a", header=False)
 
     def threaded_data_download(self, tickers):
         """ Downloads historical data using multiple threads, max threads are set in the class attributes.
@@ -167,7 +195,7 @@ class HistoricalDataManager:
         for download_thread in download_threads:
             download_thread.join()
         total_time = dt.timedelta(seconds=(time.time() - start_time))
-        log.info(f"Downloads completed in: {total_time}")
+        log.info(f"Historical data checks completed in: {total_time}")
 
 
 def split_list(tickers, num_portions, portion_id):

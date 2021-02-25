@@ -6,7 +6,7 @@ import logging
 if __name__ == '__main__':
 
     # Logging configuration.
-    logFormatStr = "%(asctime)s [%(levelname)-5.5s]  %(message)s"
+    logFormatStr = "%(asctime)s [%(levelname)-7.7s]  %(message)s"
     logging.basicConfig(level=logging.DEBUG, format=logFormatStr)
 
     hist_data_mgr = HistoricalDataManager(market_index="S&P500", max_threads=7)

@@ -30,7 +30,7 @@ def is_holiday(date):
         return False
 
 
-def cleanse_date(date, direction=1):
+def validate_date(date, direction=1):
     """ Checks the date and ensures it is valid to be used within the system (not a weekend or holiday). If it is not
     valid, then it corrects the date by pushing the date back or forward a day or more.
 
