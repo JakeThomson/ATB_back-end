@@ -37,6 +37,8 @@ class HistoricalDataManager:
         self.max_threads = max_threads
         self.start_date = date_validator.validate_date(start_date, 1)
         self.end_date = date_validator.validate_date(end_date, -1)
+        self.file_path = f"historical_data/{self.market_index}/"
+        self.invalid_file_path = f"historical_data/{self.market_index}/INVALID/"
 
     def grab_tickers(self):
         """ Returns a list of tickers that are a part of the index stated in self.index.
@@ -124,12 +126,12 @@ class HistoricalDataManager:
 
         # Iterate through ticker list and download historical data into a CSV if it does not already exist.
         for ticker in slice_of_tickers:
-            file_path = f"historical_data/{self.market_index}/{ticker}.csv"
-            invalid_file_path = f"historical_data/{self.market_index}/INVALID/{ticker}.csv"
+            file_name = f"{ticker}.csv"
+            invalid_file_name = f"{ticker}.csv"
 
-            if not os.path.exists(file_path):
+            if not os.path.exists(self.file_path+file_name):
                 # Check to see if CSV has been placed in the invalid folder previously.
-                if os.path.exists(invalid_file_path):
+                if os.path.exists(self.invalid_file_path+file_name):
                     log.warning(f"{ticker} has previously been identified as invalid, skipping")
                     continue
 
@@ -147,9 +149,9 @@ class HistoricalDataManager:
                 # Validate data, and save as CSV to the appropriate locations.
                 valid = HistoricalDataValidator(historical_df).validate_data()
                 if valid:
-                    historical_df.to_csv(file_path, mode="a", header=False)
+                    historical_df.to_csv(self.file_path+file_name, mode="a", header=False)
                 else:
-                    historical_df.to_csv(invalid_file_path, mode="a", header=False)
+                    historical_df.to_csv(self.invalid_file_path+file_name, mode="a", header=False)
             # If CSV already exists, check to see if it has data up until self.end_date.
             else:
                 up_to_date, last_date_in_csv = self.__csv_up_to_date(ticker)
@@ -165,11 +167,11 @@ class HistoricalDataManager:
                     # Validate data, and append new data onto existing CSVs.
                     valid = HistoricalDataValidator(historical_df).validate_data()
                     if valid:
-                        historical_df.to_csv(file_path, mode="a", header=False)
+                        historical_df.to_csv(self.file_path+file_name, mode="a", header=False)
                     else:
                         # If invalid, move the original 'valid' file before appending onto it.
-                        os.rename(file_path, invalid_file_path)
-                        historical_df.to_csv(invalid_file_path, mode="a", header=False)
+                        os.rename(self.file_path+file_name, self.invalid_file_path+file_name)
+                        historical_df.to_csv(self.invalid_file_path+file_name, mode="a", header=False)
 
     def threaded_data_download(self, tickers):
         """ Downloads historical data using multiple threads, max threads are set in the class attributes.
@@ -181,8 +183,10 @@ class HistoricalDataManager:
         download_threads = []
         start_time = time.time()
 
-        if not os.path.exists(f"historical_data/{self.market_index}"):
-            os.makedirs(f"historical_data/{self.market_index}")
+        if not os.path.exists(self.file_path):
+            os.makedirs(self.file_path)
+        if not os.path.exists(self.invalid_file_path):
+            os.makedirs(self.invalid_file_path)
 
         # Create a number of threads to download data concurrently, to speed up the process.
         for thread_id in range(0, self.max_threads):
