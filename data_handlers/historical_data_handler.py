@@ -137,10 +137,10 @@ class HistoricalDataManager:
 
                 percentage = \
                     round(len(os.listdir(f'./historical_data/{self.market_index}')) / self.num_tickers * 100, 2)
-                progress = f"{len(os.listdir(f'historical_data/{self.market_index}'))}/{self.num_tickers} - {percentage}%)"
+                progress = f"{len(os.listdir(f'historical_data/{self.market_index}'))}/{self.num_tickers} - {percentage}%"
 
                 # Download data from Yahoo finance using pandas_datareader.
-                log.debug(f"Saving {(ticker + ' data').ljust(13)} ({progress}%)")
+                log.debug(f"Saving {(ticker + ' data').ljust(13)} ({progress})")
                 historical_df = web.DataReader(ticker, "yahoo", self.start_date, self.end_date)
                 historical_df = historical_df.reindex(columns=["Open", "High", "Low", "Close", "Volume", "Adj Close"])
                 historical_df.columns = ["open", "high", "low", "close", "volume", "adj close"]
