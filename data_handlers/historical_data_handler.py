@@ -15,7 +15,7 @@ import re
 import pickle
 import time
 
-
+# Set log level for get requests to yahoo finance.
 log.getLogger("urllib3").setLevel(log.WARNING)
 
 
@@ -47,7 +47,7 @@ class HistoricalDataManager:
         """
 
         tickers = []
-        log.debug(f"Looking for tickers in the market index '{self.market_index}'")
+        log.info(f"Looking for tickers in the market index '{self.market_index}'")
 
         # Determining the source of the list of tickers.
         if self.market_index == "S&P500":
@@ -184,6 +184,7 @@ class HistoricalDataManager:
         :return: none
         """
 
+        log.info("Saving/updating ticker historical data to CSVs")
         download_threads = []
         start_time = time.time()
 
