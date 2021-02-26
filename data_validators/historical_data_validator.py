@@ -13,7 +13,7 @@ class HistoricalDataValidator:
 
     def __date_gap_check(self, row_date):
         """ Checks the gap between the current iteration date, and the last read date. Save the date gap info to object
-        attributes if it is higher than the currently recorded date gap.
+            attributes if it is higher than the currently recorded date gap.
 
         :param row_date: The date attached to the row being validated.
         :raises HistoricalDataValidationError: If data fails validation check.
@@ -63,6 +63,22 @@ class HistoricalDataValidator:
                 invalid_reason = f"Values repeated {repeat_limit} or more times ({row_date})"
                 raise HistoricalDataValidationError(self.dataframe.ticker, invalid_reason)
 
+    def __unexplainable_value_change_check(self, row_date, row_values):
+        """ Compares the current rows values against the previous, checking to see that there are no extreme changes
+
+        :param row_values: The values contained in the row being validated.
+        :raises HistoricalDataValidationError: If a value in the row has changed more than 80%.
+        """
+        percent_change_limit = 100
+
+        value = row_values['close']
+        prev_value = self.prev_row_values['close']
+
+        percent_change = ((value - prev_value) / prev_value) * 100
+        if abs(percent_change) > percent_change_limit:
+            invalid_reason = f" Close value had a change of {round(percent_change,2)}% in one day ({row_date.date()})"
+            raise HistoricalDataValidationError(self.dataframe.ticker, invalid_reason)
+
     def validate_data(self):
         """ Performs all validation checks on every row of the dataframe provided to the validator.
 
@@ -82,6 +98,7 @@ class HistoricalDataValidator:
                     continue
 
                 # Checks that compare against previous row.
+                self.__unexplainable_value_change_check(row_date, row_values)
                 self.__date_gap_check(row_date)
                 self.__repeated_values_check(row_date, row_values)
 

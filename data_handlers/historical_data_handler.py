@@ -54,13 +54,17 @@ class HistoricalDataManager:
 
             # Look for ticker list in cache.
             pattern = re.compile(f"^S&P500_(.*)\\.pickle")
-            filepath = "historical_data/market_index_lists/"
-            for filename in os.listdir(filepath):
+            file_path = "historical_data/market_index_lists/"
+
+            if not os.path.exists(file_path):
+                os.makedirs(file_path)
+
+            for filename in os.listdir(file_path):
                 match = pattern.match(filename)
                 if match:
                     # Use cache if it is up to date.
                     if dt.datetime.strptime(match.group(1), "%Y-%m-%d").date() == dt.datetime.today().date():
-                        with open(filepath + filename, "rb") as f:
+                        with open(file_path + filename, "rb") as f:
                             tickers = pickle.load(f)
                         self.num_tickers = len(tickers)
                         log.info(f"Successfully obtained list of {self.num_tickers} tickers in "
@@ -69,7 +73,7 @@ class HistoricalDataManager:
                     # Remove cache file if it is not up to date, and proceed to re-download from Wikipedia.
                     else:
                         log.debug(f"Updating cache file for market index '{self.market_index}'")
-                        os.remove(filepath + filename)
+                        os.remove(file_path + filename)
 
             # Scrape list of S&P500 companies from Wikipedia.
             resp = requests.get("https://en.wikipedia.org/wiki/List_of_S%26P_500_companies")
@@ -84,7 +88,7 @@ class HistoricalDataManager:
                 tickers.append(ticker)
 
             filename = self.market_index + "_" + str(dt.datetime.today().date()) + ".pickle"
-            with open(filepath + filename, "wb") as f:
+            with open(file_path + filename, "wb") as f:
                 pickle.dump(tickers, f)
 
             log.info(f"Successfully obtained list of {len(tickers)} tickers in market index '{self.market_index}' "
@@ -98,7 +102,7 @@ class HistoricalDataManager:
 
     def __csv_up_to_date(self, ticker):
         """ Opens the ticker's CSV file and checks to see if the data runs up to the date set in self.start_date,
-        which is yesterday by default due to that being guaranteed to be the last full day of data.
+            which is yesterday by default due to that being guaranteed to be the last full day of data.
 
         :param ticker: A string containing a company ticker
         :return: True if CSV covers the dates, False if not.
@@ -127,7 +131,6 @@ class HistoricalDataManager:
         # Iterate through ticker list and download historical data into a CSV if it does not already exist.
         for ticker in slice_of_tickers:
             file_name = f"{ticker}.csv"
-            invalid_file_name = f"{ticker}.csv"
 
             if not os.path.exists(self.file_path+file_name):
                 # Check to see if CSV has been placed in the invalid folder previously.
@@ -137,7 +140,8 @@ class HistoricalDataManager:
 
                 percentage = \
                     round(len(os.listdir(f'./historical_data/{self.market_index}')) / self.num_tickers * 100, 2)
-                progress = f"{len(os.listdir(f'historical_data/{self.market_index}'))}/{self.num_tickers} - {percentage}%"
+                progress = f"{len(os.listdir(f'historical_data/{self.market_index}'))}" \
+                           f"/{self.num_tickers} - {percentage}%"
 
                 # Download data from Yahoo finance using pandas_datareader.
                 log.debug(f"Saving {(ticker + ' data').ljust(13)} ({progress})")
