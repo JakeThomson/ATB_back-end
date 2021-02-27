@@ -153,9 +153,9 @@ class HistoricalDataManager:
                 # Validate data, and save as CSV to the appropriate locations.
                 valid = HistoricalDataValidator(historical_df).validate_data()
                 if valid:
-                    historical_df.to_csv(self.file_path+file_name, mode="a", header=False)
+                    historical_df.to_csv(self.file_path+file_name, mode="a")
                 else:
-                    historical_df.to_csv(self.invalid_file_path+file_name, mode="a", header=False)
+                    historical_df.to_csv(self.invalid_file_path+file_name, mode="a")
             # If CSV already exists, check to see if it has data up until self.end_date.
             else:
                 up_to_date, last_date_in_csv = self.__csv_up_to_date(ticker)
@@ -171,11 +171,11 @@ class HistoricalDataManager:
                     # Validate data, and append new data onto existing CSVs.
                     valid = HistoricalDataValidator(historical_df).validate_data()
                     if valid:
-                        historical_df.to_csv(self.file_path+file_name, mode="a", header=False)
+                        historical_df.to_csv(self.file_path+file_name, mode="a")
                     else:
                         # If invalid, move the original 'valid' file before appending onto it.
                         os.rename(self.file_path+file_name, self.invalid_file_path+file_name)
-                        historical_df.to_csv(self.invalid_file_path+file_name, mode="a", header=False)
+                        historical_df.to_csv(self.invalid_file_path+file_name, mode="a")
 
     def threaded_data_download(self, tickers):
         """ Downloads historical data using multiple threads, max threads are set in the class attributes.

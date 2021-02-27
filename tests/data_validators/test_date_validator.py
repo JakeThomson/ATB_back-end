@@ -20,21 +20,22 @@ class DateCases:
 
 
 @pytest.mark.date_validator
-class TestDateValidator:
+@parametrize_with_cases("case", cases=DateCases)
+def test_is_weekend_check(case):
+    assert date_validator.is_weekend_check(case.date) == case.expected_is_weekend
 
-    @parametrize_with_cases("case", cases=DateCases)
-    def test_is_weekend_check(self, case):
-        assert date_validator.is_weekend_check(case.date) == case.expected_is_weekend
 
-    @parametrize_with_cases("case", cases=DateCases)
-    def test_is_holiday_check(self, case):
-        assert date_validator.is_holiday_check(case.date) == case.expected_is_holiday
+@pytest.mark.date_validator
+@parametrize_with_cases("case", cases=DateCases)
+def test_is_holiday_check(case):
+    assert date_validator.is_holiday_check(case.date) == case.expected_is_holiday
 
-    @parametrize_with_cases("case", cases=DateCases)
-    def test_validate_date(self, case):
-        forward_correction = date_validator.validate_date(case.date, 1)
-        backward_correction = date_validator.validate_date(case.date, -1)
 
-        assert forward_correction == case.expected_validate_date_forward \
-               and backward_correction == case.expected_validate_date_backward
+@pytest.mark.date_validator
+@parametrize_with_cases("case", cases=DateCases)
+def test_validate_date(case):
+    forward_correction = date_validator.validate_date(case.date, 1)
+    backward_correction = date_validator.validate_date(case.date, -1)
 
+    assert forward_correction == case.expected_validate_date_forward \
+           and backward_correction == case.expected_validate_date_backward
