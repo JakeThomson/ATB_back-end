@@ -13,11 +13,17 @@ class DateCases:
 
     @parametrize(case=cases.index)
     def case_select(self, case):
-
+        """ Returns a row for each case to be used by the tests. """
         return self.cases.loc[case]
 
 
 @pytest.mark.date_validator
-@parametrize_with_cases("case", cases=DateCases)
-def test_is_weekend_check(case):
-    assert date_validator.is_weekend_check(case.date) == case.expected_is_weekend
+class TestDateValidator:
+
+    @parametrize_with_cases("case", cases=DateCases)
+    def test_is_weekend_check(self, case):
+        assert date_validator.is_weekend_check(case.date) == case.expected_is_weekend
+
+    @parametrize_with_cases("case", cases=DateCases)
+    def test_is_holiday_check(self, case):
+        assert date_validator.is_holiday_check(case.date) == case.expected_is_holiday

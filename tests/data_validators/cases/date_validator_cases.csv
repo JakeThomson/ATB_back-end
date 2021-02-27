@@ -1,3 +1,5 @@
 label,date,expected_is_weekend,expected_is_holiday
 weekday,2021-01-22,False,False
 weekend,2021-01-23,True,False
+holiday_weekday,2021-01-01,False,True
+holiday_weekend,2020-07-04,True,True

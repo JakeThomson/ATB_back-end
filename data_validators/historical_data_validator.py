@@ -1,7 +1,5 @@
 import logging as log
-from data_validators import date_validator
 from exceptions.custom_exceptions import HistoricalDataValidationError
-import datetime as dt
 
 
 class HistoricalDataValidator:
@@ -67,7 +65,7 @@ class HistoricalDataValidator:
         """ Compares the current rows values against the previous, checking to see that there are no extreme changes
 
         :param row_values: The values contained in the row being validated.
-        :raises HistoricalDataValidationError: If a value in the row has changed more than 80%.
+        :raises HistoricalDataValidationError: If a value in the row has changed more than 100%.
         """
         percent_change_limit = 100
 

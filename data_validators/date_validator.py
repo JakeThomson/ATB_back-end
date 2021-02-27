@@ -15,7 +15,7 @@ def is_weekend_check(date):
         return False
 
 
-def is_holiday(date):
+def is_holiday_check(date):
     """ Checks if date falls on a holiday (banks closed).
 
     :param date: Datetime object to be checked.
@@ -42,11 +42,11 @@ def validate_date(date, direction=1):
 
     if direction == 1 or direction == -1:
         initial_date = date
-        invalid = is_holiday(date) or is_weekend_check(date)
+        invalid = is_holiday_check(date) or is_weekend_check(date)
 
         # Keep adjusting date until it is valid.
         while invalid:
-            if is_holiday(date) or is_weekend_check(date):
+            if is_holiday_check(date) or is_weekend_check(date):
                 date = date + (dt.timedelta(days=1) * direction)
             else:
                 invalid = False
