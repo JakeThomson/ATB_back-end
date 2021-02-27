@@ -9,6 +9,8 @@ class DateCases:
 
     cases = pd.read_csv('data_validators/cases/date_validator_cases.csv')
     cases['date'] = pd.to_datetime(cases['date'])
+    cases['expected_validate_date_forward'] = pd.to_datetime(cases['expected_validate_date_forward'])
+    cases['expected_validate_date_backward'] = pd.to_datetime(cases['expected_validate_date_backward'])
     cases = cases.set_index('label')
 
     @parametrize(case=cases.index)
@@ -27,3 +29,12 @@ class TestDateValidator:
     @parametrize_with_cases("case", cases=DateCases)
     def test_is_holiday_check(self, case):
         assert date_validator.is_holiday_check(case.date) == case.expected_is_holiday
+
+    @parametrize_with_cases("case", cases=DateCases)
+    def test_validate_date(self, case):
+        forward_correction = date_validator.validate_date(case.date, 1)
+        backward_correction = date_validator.validate_date(case.date, -1)
+
+        assert forward_correction == case.expected_validate_date_forward \
+               and backward_correction == case.expected_validate_date_backward
+
