@@ -4,7 +4,6 @@ from pytest_cases import parametrize, parametrize_with_cases
 from data_validators import historical_data_validator
 from os import listdir
 import re
-import logging as log
 
 
 class DataCases:

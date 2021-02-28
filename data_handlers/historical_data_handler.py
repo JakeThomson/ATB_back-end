@@ -39,6 +39,7 @@ class HistoricalDataManager:
         self.start_date = date_validator.validate_date(start_date, 1)
         self.end_date = date_validator.validate_date(end_date, -1)
         self.file_path = f"historical_data/{self.market_index}/"
+        self.market_index_file_path = "historical_data/market_index_lists/"
         self.invalid_file_path = f"historical_data/{self.market_index}/INVALID/"
 
     def grab_tickers(self):
@@ -55,17 +56,16 @@ class HistoricalDataManager:
 
             # Look for ticker list in cache.
             pattern = re.compile(f"^S&P500_(.*)\\.pickle")
-            file_path = "historical_data/market_index_lists/"
 
-            if not os.path.exists(file_path):
-                os.makedirs(file_path)
+            if not os.path.exists(self.market_index_file_path):
+                os.makedirs(self.market_index_file_path)
 
-            for filename in os.listdir(file_path):
+            for filename in os.listdir(self.market_index_file_path):
                 match = pattern.match(filename)
                 if match:
                     # Use cache if it is up to date.
                     if dt.datetime.strptime(match.group(1), "%Y-%m-%d").date() == dt.datetime.today().date():
-                        with open(file_path + filename, "rb") as f:
+                        with open(self.market_index_file_path + filename, "rb") as f:
                             tickers = pickle.load(f)
                         self.num_tickers = len(tickers)
                         log.info(f"Successfully obtained list of {self.num_tickers} tickers in "
@@ -74,7 +74,7 @@ class HistoricalDataManager:
                     # Remove cache file if it is not up to date, and proceed to re-download from Wikipedia.
                     else:
                         log.debug(f"Updating cache file for market index '{self.market_index}'")
-                        os.remove(file_path + filename)
+                        os.remove(self.market_index_file_path + filename)
 
             # Scrape list of S&P500 companies from Wikipedia.
             resp = requests.get("https://en.wikipedia.org/wiki/List_of_S%26P_500_companies")
@@ -89,7 +89,7 @@ class HistoricalDataManager:
                 tickers.append(ticker)
 
             filename = self.market_index + "_" + str(dt.datetime.today().date()) + ".pickle"
-            with open(file_path + filename, "wb") as f:
+            with open(self.market_index_file_path + filename, "wb") as f:
                 pickle.dump(tickers, f)
 
             log.info(f"Successfully obtained list of {len(tickers)} tickers in market index '{self.market_index}' "
@@ -109,7 +109,7 @@ class HistoricalDataManager:
         :return: True if CSV covers the dates, False if not.
         """
         # Load the ticker data, look at the last index and compare the date to self.end_date.
-        historical_df = pd.read_csv(f"historical_data/{self.market_index}/{ticker}.csv")
+        historical_df = pd.read_csv(f"{self.file_path}{ticker}.csv")
         last_date = historical_df.iloc[historical_df.last_valid_index(), 0]
         last_date = dt.datetime.strptime(last_date, "%Y-%m-%d")
 
