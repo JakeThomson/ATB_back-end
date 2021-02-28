@@ -24,7 +24,8 @@ class HistoricalDataManager:
     num_tickers = 0
 
     def __init__(self, market_index="S&P500", max_threads=4, start_date=dt.datetime(2000, 1, 1),
-                 end_date=(dt.datetime.today() - dt.timedelta(days=1))):
+                 end_date=(dt.datetime.today().replace(hour=0, minute=0, second=0, microsecond=0)
+                           - dt.timedelta(days=1))):
         """ Constructor class that instantiates the historical data manager.
 
         :param market_index: Label for the market index to be used in the backtest.
@@ -161,8 +162,11 @@ class HistoricalDataManager:
                 up_to_date, last_date_in_csv = self.__csv_up_to_date(ticker)
                 if not up_to_date:
                     # If not up to date, then download the missing data.
+                    download_from_date = last_date_in_csv + dt.timedelta(days=1)
                     log.debug(f"Updating {ticker} data")
-                    historical_df = web.DataReader(ticker, "yahoo", last_date_in_csv, self.end_date)
+                    historical_df = web.DataReader(ticker, "yahoo", download_from_date, self.end_date)
+                    if historical_df.index[0] == historical_df.index[1]:
+                        historical_df = historical_df.iloc[1:]
                     historical_df = historical_df.reindex(
                         columns=["Open", "High", "Low", "Close", "Volume", "Adj Close"])
                     historical_df.columns = ["open", "high", "low", "close", "volume", "adj close"]
@@ -171,11 +175,11 @@ class HistoricalDataManager:
                     # Validate data, and append new data onto existing CSVs.
                     valid = HistoricalDataValidator(historical_df).validate_data()
                     if valid:
-                        historical_df.to_csv(self.file_path+file_name, mode="a")
+                        historical_df.to_csv(self.file_path+file_name, mode="a", header=False)
                     else:
                         # If invalid, move the original 'valid' file before appending onto it.
                         os.rename(self.file_path+file_name, self.invalid_file_path+file_name)
-                        historical_df.to_csv(self.invalid_file_path+file_name, mode="a")
+                        historical_df.to_csv(self.invalid_file_path+file_name, mode="a", header=False)
 
     def threaded_data_download(self, tickers):
         """ Downloads historical data using multiple threads, max threads are set in the class attributes.
