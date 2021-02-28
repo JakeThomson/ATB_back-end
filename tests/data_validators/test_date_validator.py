@@ -14,7 +14,7 @@ class DateCases:
     cases = cases.set_index('label')
 
     @parametrize(case=cases.index)
-    def case_select(self, case):
+    def case_test(self, case):
         """ Returns a row for each case to be used by the tests. """
         return self.cases.loc[case]
 

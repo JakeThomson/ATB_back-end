@@ -28,7 +28,7 @@ class DataCases:
         cases[i] = case
 
     @parametrize(case=case_ids)
-    def case_select(self, case):
+    def case_test(self, case):
         """ Returns a row for each case to be used by the tests. """
         for case_df in self.cases:
             if case_df.id == case:
