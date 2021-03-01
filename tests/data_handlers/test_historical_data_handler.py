@@ -1,3 +1,5 @@
+import shutil
+
 import pytest
 import requests
 import pandas as pd
@@ -12,9 +14,6 @@ hist_data_mgr.file_path = "data_handlers/test_data/historical_data/S&P500/"
 
 if not os.path.exists(hist_data_mgr.file_path):
     os.makedirs(hist_data_mgr.file_path)
-
-    # os.unlink(hist_data_mgr.file_path)
-
 
 @pytest.mark.historical_data_handler
 def test_get_tickers_extracts_values_from_html_table(requests_mock):
@@ -68,7 +67,7 @@ def test_get_tickers_updates_ticker_list_cache_file(requests_mock):
 
 
 @pytest.mark.historical_data_handler
-def test_download_historical_data_to_csv(mocker):
+def test_historical_data_handler_download_to_csv(mocker):
     # Test set up: Create mocks for all function calls within download_historical_data_to_csv
     test_dataframe = pd.read_csv(f"data_handlers/test_data/historical_data/test_historical_data_1.csv")
     test_dataframe["Date"] = pd.to_datetime(test_dataframe["Date"])
@@ -87,3 +86,38 @@ def test_download_historical_data_to_csv(mocker):
     result_dataframe.columns = ["Open", "High", "Low", "Close", "Volume", "Adj Close"]
 
     assert result_dataframe.equals(test_dataframe)
+
+
+@pytest.mark.historical_data_handler
+def test_hist_data_handler_updates_existing_csv(mocker):
+    # Test set up: Create mocks for all function calls within download_historical_data_to_csv.
+    mocker.patch("data_handlers.historical_data_handler.split_list", return_value=["TEST1"])
+
+    test_dataframe = pd.read_csv(f"data_handlers/test_data/historical_data/test_historical_data_2.csv")
+    test_dataframe["Date"] = pd.to_datetime(test_dataframe["Date"])
+    test_dataframe = test_dataframe.set_index("Date")
+    mocker.patch("pandas_datareader.DataReader", return_value=test_dataframe)
+
+    last_date_in_test_csv = dt.datetime(year=2021, month=2, day=24)
+    mocker.patch("data_handlers.historical_data_handler.HistoricalDataHandler.csv_up_to_date",
+                 return_value={False, last_date_in_test_csv})
+
+    mocker.patch("data_validators.historical_data_validator.HistoricalDataValidator.validate_data", return_value=True)
+    test_tickers = ['TEST1', 'TEST2', 'TEST3']
+
+    hist_data_mgr.download_historical_data_to_csv(test_tickers, 0)
+
+    expected_dataframe = pd.read_csv(f"data_handlers/test_data/historical_data/test_historical_data_combined.csv")
+    expected_dataframe["Date"] = pd.to_datetime(expected_dataframe["Date"])
+    expected_dataframe = expected_dataframe.set_index("Date")
+
+    result_dataframe = pd.read_csv(f"data_handlers/test_data/historical_data/S&P500/TEST1.csv")
+    result_dataframe["Date"] = pd.to_datetime(result_dataframe["Date"])
+    result_dataframe = result_dataframe.set_index("Date")
+    result_dataframe.columns = ["Open", "High", "Low", "Close", "Volume", "Adj Close"]
+
+    # Delete test file directory at end of tests.
+    shutil.rmtree(hist_data_mgr.file_path)
+    shutil.rmtree(hist_data_mgr.market_index_file_path)
+
+    assert result_dataframe.equals(expected_dataframe)
