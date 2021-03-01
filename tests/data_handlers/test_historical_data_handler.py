@@ -8,7 +8,7 @@ import datetime as dt
 import os
 from data_handlers.historical_data_handler import HistoricalDataHandler
 
-hist_data_mgr = HistoricalDataHandler(market_index="S&P500", end_date=dt.datetime(year=2021, month=2, day=24))
+hist_data_mgr = HistoricalDataHandler(market_index="S&P500", end_date=dt.datetime(year=2021, month=2, day=25))
 hist_data_mgr.market_index_file_path = "data_handlers/test_data/historical_data/market_index_lists/"
 hist_data_mgr.file_path = "data_handlers/test_data/historical_data/S&P500/"
 
@@ -86,6 +86,14 @@ def test_historical_data_handler_download_to_csv(mocker):
     result_dataframe.columns = ["Open", "High", "Low", "Close", "Volume", "Adj Close"]
 
     assert result_dataframe.equals(test_dataframe)
+
+
+@pytest.mark.historical_data_handler
+def test_hist_data_detects_outdated_csv(mocker):
+    # mocker.resetall()
+    result, last_date_in_csv = hist_data_mgr.csv_up_to_date("TEST1")
+
+    assert result is False
 
 
 @pytest.mark.historical_data_handler
