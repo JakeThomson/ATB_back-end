@@ -66,6 +66,7 @@ class HistoricalDataValidator:
     def unexplainable_value_change_check(self, row_date, row_values):
         """ Compares the current rows values against the previous, checking to see that there are no extreme changes
 
+        :param row_date: The date attached to the row being validated.
         :param row_values: The values contained in the row being validated.
         :raises HistoricalDataValidationError: If a value in the row has changed more than 100%.
         """
