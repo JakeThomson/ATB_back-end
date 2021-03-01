@@ -1,0 +1,5 @@
+label,date,expected_is_weekend,expected_is_holiday,expected_validate_date_forward,expected_validate_date_backward
+weekday,2021-01-22,False,False,2021-01-22,2021-01-22
+weekend,2021-01-23,True,False,2021-01-25,2021-01-22
+holiday_weekday,2021-01-01,False,True,2021-01-04,2020-12-31
+holiday_weekend,2020-07-04,True,True,2020-07-06,2020-07-02
