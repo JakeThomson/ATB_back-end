@@ -19,7 +19,7 @@ import time
 log.getLogger("urllib3").setLevel(log.WARNING)
 
 
-class HistoricalDataManager:
+class HistoricalDataHandler:
 
     num_tickers = 0
 
@@ -101,7 +101,7 @@ class HistoricalDataManager:
         self.num_tickers = len(tickers)
         return tickers
 
-    def __csv_up_to_date(self, ticker):
+    def csv_up_to_date(self, ticker):
         """ Opens the ticker's CSV file and checks to see if the data runs up to the date set in self.start_date,
             which is yesterday by default due to that being guaranteed to be the last full day of data.
 
@@ -118,7 +118,7 @@ class HistoricalDataManager:
         else:
             return True, None
 
-    def __download_historical_data_to_csv(self, tickers, thread_id):
+    def download_historical_data_to_csv(self, tickers, thread_id):
         """ Gets historical data from Yahoo using a slice of the tickers provided in the tickers list.
 
         :param tickers: A list of company tickers.
@@ -140,9 +140,8 @@ class HistoricalDataManager:
                     continue
 
                 percentage = \
-                    round(len(os.listdir(f'./historical_data/{self.market_index}')) / self.num_tickers * 100, 2)
-                progress = f"{len(os.listdir(f'historical_data/{self.market_index}'))}" \
-                           f"/{self.num_tickers} - {percentage}%"
+                    round(len(os.listdir(self.file_path)) / self.num_tickers * 100, 2)
+                progress = f"{len(os.listdir(self.file_path))}/{self.num_tickers} - {percentage}%"
 
                 # Download data from Yahoo finance using pandas_datareader.
                 log.debug(f"Saving {(ticker + ' data').ljust(13)} ({progress})")
@@ -159,7 +158,7 @@ class HistoricalDataManager:
                     historical_df.to_csv(self.invalid_file_path+file_name, mode="a")
             # If CSV already exists, check to see if it has data up until self.end_date.
             else:
-                up_to_date, last_date_in_csv = self.__csv_up_to_date(ticker)
+                up_to_date, last_date_in_csv = self.csv_up_to_date(ticker)
                 if not up_to_date:
                     # If not up to date, then download the missing data.
                     download_from_date = last_date_in_csv + dt.timedelta(days=1)
@@ -199,7 +198,7 @@ class HistoricalDataManager:
 
         # Create a number of threads to download data concurrently, to speed up the process.
         for thread_id in range(0, self.max_threads):
-            download_thread = threading.Thread(target=self.__download_historical_data_to_csv,
+            download_thread = threading.Thread(target=self.download_historical_data_to_csv,
                                                args=(tickers, thread_id))
             download_threads.append(download_thread)
             download_thread.start()
