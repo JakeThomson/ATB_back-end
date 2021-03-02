@@ -5,7 +5,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setuptools.setup(
     name="Algorithmic Trading Bot",
-    version="0.0.6",
+    version="0.1",
     author="Jake Thomson",
     author_email="jakethomson0@gmail.com",
     description="The backend of the algorithmic trading bot project.",
