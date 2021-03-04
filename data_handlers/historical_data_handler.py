@@ -15,9 +15,6 @@ import re
 import pickle
 import time
 
-# Set log level for get requests to yahoo finance.
-log.getLogger("urllib3").setLevel(log.WARNING)
-
 
 class HistoricalDataHandler:
 
@@ -164,8 +161,12 @@ class HistoricalDataHandler:
                     download_from_date = last_date_in_csv + dt.timedelta(days=1)
                     log.debug(f"Updating {ticker} data")
                     historical_df = web.DataReader(ticker, "yahoo", download_from_date, self.end_date)
-                    if historical_df.index[0] == historical_df.index[1]:
-                        historical_df = historical_df.iloc[1:]
+                    try:
+                        if historical_df.index[0] == historical_df.index[1]:
+                            historical_df = historical_df.iloc[1:]
+                    except IndexError:
+                        # There is only one line
+                        pass
                     historical_df = historical_df.reindex(
                         columns=["Open", "High", "Low", "Close", "Volume", "Adj Close"])
                     historical_df.columns = ["open", "high", "low", "close", "volume", "adj close"]
