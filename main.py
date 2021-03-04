@@ -1,14 +1,12 @@
 from data_handlers.historical_data_handler import HistoricalDataHandler
-from simulator.simulator import TradeSimulator
-import logging
+from simulator.simulator import Backtest, BacktestController
+import config
 
 
 # Main code
 if __name__ == '__main__':
 
-    # Logging configuration.
-    logFormatStr = "%(asctime)s [%(levelname)-7.7s]  %(message)s"
-    logging.basicConfig(level=logging.DEBUG, format=logFormatStr)
+    config.logging_config()
 
     hist_data_mgr = HistoricalDataHandler(market_index="S&P500", max_threads=7)
     tickers = hist_data_mgr.grab_tickers()
