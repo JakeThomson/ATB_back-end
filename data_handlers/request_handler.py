@@ -4,9 +4,12 @@
 
 import requests
 import logging
+import time
 
 logger = logging.getLogger("requests")
 URL = None
+max_attempts = 5
+retry_delay_seconds = 3
 
 
 def set_environment(environment):
@@ -26,11 +29,24 @@ def put(endpoint, data):
     :return response: The response object.
     """
     logger.debug(f"Sending PUT request to '{URL}{endpoint}' with payload: {data}")
-    try:
-        response = requests.put(URL + endpoint, data=data)
-    except Exception as e:
-        logger.error(f"Error occurred when sending PUT request to {URL}{endpoint}")
-        raise e
+    attempts = 0
+    while True:
+        attempts += 1
+        try:
+            response = requests.put(URL + endpoint, data=data)
+            break
+        except requests.exceptions.ConnectionError as e:
+            # Handle connection errors.
+            if attempts < max_attempts:
+                logger.warning(f"Could not connect to {URL}, retrying in {retry_delay_seconds} seconds...")
+                time.sleep(3)
+                continue
+            else:
+                logger.critical(f"Could not connect to {URL} after {attempts} attempts to send PUT request to {endpoint}.")
+                exit()
+
+    if attempts > 1:
+        logger.info(f"Successfully sent PUT request to {URL}{endpoint} after {attempts} attempts")
 
     if response.status_code >= 400:
         logger.error(f"Status code {response.status_code} received when sending PUT request to {URL}{endpoint}")
@@ -46,11 +62,25 @@ def patch(endpoint, data):
     :return response: The response object.
     """
     logger.debug(f"Sending PATCH request to '{URL}{endpoint}' with payload: {str(data)}")
-    try:
-        response = requests.patch(URL + endpoint, data=data)
-    except ConnectionError as e:
-        logger.error(f"Error occurred when sending PATCH request to {URL}{endpoint}")
-        raise e
+    attempts = 0
+    while True:
+        attempts += 1
+        try:
+            response = requests.patch(URL + endpoint, data=data)
+            break
+        except requests.exceptions.ConnectionError as e:
+            # Handle connection errors.
+            if attempts < max_attempts:
+                logger.warning(f"Could not connect to {URL}, retrying in {retry_delay_seconds} seconds...")
+                time.sleep(3)
+                continue
+            else:
+                logger.critical(f"Could not connect to {URL} after {attempts} attempts to "
+                                f"send PATCH request to {endpoint}.")
+                exit()
+
+    if attempts > 1:
+        logger.info(f"Successfully sent PUT request to {URL}{endpoint} after {attempts} attempts")
 
     if response.status_code >= 400:
         logger.error(f"Status code {response.status_code} received when sending PATCH request to {URL}{endpoint}")

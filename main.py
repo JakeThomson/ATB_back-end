@@ -11,7 +11,7 @@ if __name__ == '__main__':
     # Application setup.
     config.logging_config()
     # Read command line argument to determine what environment URL to hit for the data access api.
-    environment = str(sys.argv[1]) if str(sys.argv[1]) is not None else "prod"
+    environment = str(sys.argv[1]) if len(sys.argv) == 2 else "prod"
     request_handler.set_environment(environment)
 
     # Download/update historical data.
