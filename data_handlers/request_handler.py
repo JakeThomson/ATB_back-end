@@ -11,10 +11,11 @@ URL = None
 
 def set_environment(environment):
     global URL
-    if environment == "PROD":
+    if environment.lower() == "prod":
         URL = "https://trading-api.jake-t.codes"
-    elif environment == "LOCAL":
+    elif environment.lower() == "local":
         URL = "http://127.0.0.1:8080"
+    logger.info(f"Connecting to data access API on {URL}")
 
 
 def put(endpoint, data):

@@ -2,6 +2,7 @@ from data_handlers.historical_data_handler import HistoricalDataHandler
 from data_handlers import request_handler
 from backtest.backtest import Backtest, BacktestController
 import config
+import sys
 
 
 # Main code
@@ -9,7 +10,9 @@ if __name__ == '__main__':
 
     # Application setup.
     config.logging_config()
-    request_handler.set_environment("LOCAL")
+    # Read command line argument to determine what environment URL to hit for the data access api.
+    environment = str(sys.argv[1]) if str(sys.argv[1]) is not None else "prod"
+    request_handler.set_environment(environment)
 
     # Download/update historical data.
     hist_data_mgr = HistoricalDataHandler(market_index="S&P500", max_threads=7)
