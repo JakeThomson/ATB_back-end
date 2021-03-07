@@ -50,7 +50,6 @@ def validate_date(date, direction=1):
                 date = date + (dt.timedelta(days=1) * direction)
             else:
                 invalid = False
-                log.debug(str(initial_date.date()) + " is an invalid date, changed to " + str(date.date()))
         return date
     else:
         raise ValueError("Direction argument in cleanse_date method can only be 1 or -1.")
