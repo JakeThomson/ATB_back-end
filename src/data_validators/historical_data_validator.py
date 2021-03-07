@@ -1,5 +1,5 @@
 import logging as log
-from exceptions.custom_exceptions import HistoricalDataValidationError
+from src.exceptions.custom_exceptions import HistoricalDataValidationError
 
 
 class HistoricalDataValidator:

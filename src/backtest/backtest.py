@@ -1,6 +1,6 @@
 import datetime as dt
-from data_handlers import request_handler
-from data_validators import date_validator
+from src.data_handlers import request_handler
+from src.data_validators import date_validator
 import logging
 import time
 

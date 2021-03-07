@@ -1,6 +1,6 @@
-from data_handlers.historical_data_handler import HistoricalDataHandler
-from data_handlers import request_handler
-from backtest.backtest import Backtest, BacktestController
+from src.data_handlers.historical_data_handler import HistoricalDataHandler
+from src.data_handlers import request_handler
+from src.backtest.backtest import Backtest, BacktestController
 import config
 import sys
 

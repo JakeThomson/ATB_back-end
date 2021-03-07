@@ -1,6 +1,6 @@
-from data_validators.historical_data_validator import HistoricalDataValidator
-from data_validators import date_validator
-from exceptions.custom_exceptions import InvalidMarketIndexError
+from src.data_validators.historical_data_validator import HistoricalDataValidator
+from src.data_validators import date_validator
+from src.exceptions.custom_exceptions import InvalidMarketIndexError
 
 import math
 import threading
