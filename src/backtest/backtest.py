@@ -9,6 +9,11 @@ logger = logging.getLogger("backtest")
 
 
 class Backtest:
+
+    max_capital_pct_per_trade = 0.25
+    tp_limit = 1.02
+    sl_limit = 0.99
+
     def __init__(self, start_date=dt.datetime(2015, 1, 1), start_balance=15000):
         """ Constructor class that instantiates the backtest object and simultaneously calls upon the backtest
             initialisation endpoint in the data access api.
@@ -16,7 +21,6 @@ class Backtest:
         :param start_date: a datetime object that the backtest will start on.
         :param start_balance: an integer value that represents the money the backtest will start on.
         """
-        self.max_capital_pct_per_trade = 0.25
         self.start_date = start_date
         self.backtest_date = start_date
         self.start_balance = start_balance
@@ -66,6 +70,7 @@ class BacktestController:
             self.backtest.increment_date()
             interesting_df = trade_handler.analyse_historical_data()
             qty, total = trade_handler.calculate_num_shares_to_buy(interesting_df)
+            trade_handler.calculate_tp_sl(qty, total)
 
             # Ensure loop is not executing too fast.
             time_taken = dt.timedelta(seconds=(time.time() - start_time)).total_seconds()

@@ -32,4 +32,8 @@ class TradeHandler:
             raise
         return qty, investment_total
 
-
+    def calculate_tp_sl(self, qty, investment_total):
+        # Calculate TP/SL
+        tp = (investment_total * self.backtest.tp_limit) / qty
+        sl = (investment_total * self.backtest.sl_limit) / qty
+        return tp, sl
