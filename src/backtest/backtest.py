@@ -16,6 +16,7 @@ class Backtest:
         :param start_date: a datetime object that the backtest will start on.
         :param start_balance: an integer value that represents the money the backtest will start on.
         """
+        self.max_capital_pct_per_trade = 0.25
         self.start_date = start_date
         self.backtest_date = start_date
         self.start_balance = start_balance
@@ -49,19 +50,22 @@ class Backtest:
 class BacktestController:
     def __init__(self, backtest, tickers):
         self.backtest = backtest
-        self.trade_handler = TradeHandler(backtest, tickers)
+        self.tickers = tickers
 
     def start_backtest(self):
         """ Holds the logic for the backtest loop.
 
         :return: none
         """
+
+        trade_handler = TradeHandler(self.backtest, self.tickers)
+
         while self.backtest.backtest_date < (dt.datetime.today() - dt.timedelta(days=1)):
             start_time = time.time()
 
             self.backtest.increment_date()
-            interesting_df = self.trade_handler.analyse_historical_data()
-            current_share_price = round(interesting_df["close"].iloc[-1], 2)
+            interesting_df = trade_handler.analyse_historical_data()
+            qty, total = trade_handler.calculate_num_shares_to_buy(interesting_df)
 
             # Ensure loop is not executing too fast.
             time_taken = dt.timedelta(seconds=(time.time() - start_time)).total_seconds()
