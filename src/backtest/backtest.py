@@ -1,6 +1,7 @@
 import datetime as dt
 from src.data_handlers import request_handler
 from src.data_validators import date_validator
+from src.trades.trade_handler import TradeHandler
 import logging
 import time
 
@@ -15,6 +16,7 @@ class Backtest:
         :param start_date: a datetime object that the backtest will start on.
         :param start_balance: an integer value that represents the money the backtest will start on.
         """
+        self.start_date = start_date
         self.backtest_date = start_date
         self.start_balance = start_balance
         self.total_balance = start_balance
@@ -45,8 +47,9 @@ class Backtest:
 
 
 class BacktestController:
-    def __init__(self, backtest):
+    def __init__(self, backtest, tickers):
         self.backtest = backtest
+        self.trade_handler = TradeHandler(backtest, tickers)
 
     def start_backtest(self):
         """ Holds the logic for the backtest loop.
@@ -57,6 +60,8 @@ class BacktestController:
             start_time = time.time()
 
             self.backtest.increment_date()
+            interesting_df = self.trade_handler.analyse_historical_data()
+            current_share_price = round(interesting_df["close"].iloc[-1], 2)
 
             # Ensure loop is not executing too fast.
             time_taken = dt.timedelta(seconds=(time.time() - start_time)).total_seconds()

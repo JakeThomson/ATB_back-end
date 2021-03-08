@@ -1,6 +1,6 @@
 from src.data_validators.historical_data_validator import HistoricalDataValidator
 from src.data_validators import date_validator
-from src.exceptions.custom_exceptions import InvalidMarketIndexError
+from src.exceptions.custom_exceptions import InvalidMarketIndexError, InvalidHistoricalDataIndexError
 
 import math
 import threading
@@ -39,7 +39,7 @@ class HistoricalDataHandler:
         self.market_index_file_path = "historical_data/market_index_lists/"
         self.invalid_file_path = f"historical_data/{self.market_index}/INVALID/"
 
-    def grab_tickers(self):
+    def get_tickers(self):
         """ Returns a list of tickers that are a part of the index stated in self.index.
 
         :return tickers: A list of company tickers.
@@ -97,6 +97,23 @@ class HistoricalDataHandler:
 
         self.num_tickers = len(tickers)
         return tickers
+
+    def get_hist_dataframe(self, ticker, backtest_date, num_weeks=12):
+        historical_df = pd.read_csv(f"{self.file_path}{ticker}.csv")
+        historical_df["Date"] = pd.to_datetime(historical_df["Date"])
+        historical_df = historical_df.set_index("Date")
+
+        # Only get the 12 weeks of data before the backtest_date.
+        buffer_date = date_validator.validate_date((backtest_date - dt.timedelta(weeks=num_weeks)), -1)
+
+        first_date_in_csv = historical_df.index[0]
+        if buffer_date <= first_date_in_csv:
+            raise InvalidHistoricalDataIndexError(ticker, buffer_date, first_date_in_csv)
+
+        historical_df = historical_df[buffer_date:backtest_date]
+        historical_df.ticker = ticker
+
+        return historical_df
 
     def csv_up_to_date(self, ticker):
         """ Opens the ticker's CSV file and checks to see if the data runs up to the date set in self.start_date,

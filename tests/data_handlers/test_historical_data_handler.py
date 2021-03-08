@@ -21,7 +21,7 @@ def test_get_tickers_extracts_values_from_html_table(requests_mock):
     with open('data_handlers/test_data/historical_data/test_wikipedia_html.txt') as f:
         text = f.read()
     requests_mock.get("https://en.wikipedia.org/wiki/List_of_S%26P_500_companies", text=text)
-    tickers = hist_data_mgr.grab_tickers()
+    tickers = hist_data_mgr.get_tickers()
 
     assert tickers == ['TEST1', 'TEST2', 'TEST3']
 
@@ -58,7 +58,7 @@ def test_get_tickers_updates_ticker_list_cache_file(requests_mock):
               fr'{hist_data_mgr.market_index_file_path}S&P500_{yesterday_date}.pickle')
 
     # Test to see if grab_tickers updates the file.
-    hist_data_mgr.grab_tickers()
+    hist_data_mgr.get_tickers()
 
     file_exists = os.path.isfile(f"{hist_data_mgr.market_index_file_path}S&P500_{today_date}.pickle")
 
