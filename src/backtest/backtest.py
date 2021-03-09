@@ -11,6 +11,7 @@ logger = logging.getLogger("backtest")
 
 class Backtest:
 
+    # Global variables that will eventually be set in the UI.
     max_capital_pct_per_trade = 0.25
     tp_limit = 1.02
     sl_limit = 0.99
@@ -58,7 +59,10 @@ class BacktestController:
         self.tickers = tickers
 
     def start_backtest(self):
-        """ Holds the logic for the backtest loop.
+        """ Holds the logic for the backtest loop:
+        1. Increment Date.
+        2. Analyse stocks.
+        3. Make trade(s) with the stock that has the most confidence.
 
         :return: none
         """
@@ -67,9 +71,13 @@ class BacktestController:
 
         while self.backtest.backtest_date < (dt.datetime.today() - dt.timedelta(days=1)):
             start_time = time.time()
+            self.backtest.increment_date()
+
+            # Try to invest in new stocks, move to the next day if nothing good is found or if balance is too low.
             try:
-                self.backtest.increment_date()
+                # Select the stock that has the most confidence from the analysis.
                 interesting_df = trade_handler.analyse_historical_data()
+                # Go to automatically open an order for that stock using the rules set.
                 trade = trade_handler.create_trade(interesting_df)
                 trade_handler.make_trade(trade)
 
