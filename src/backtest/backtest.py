@@ -69,8 +69,10 @@ class BacktestController:
 
             self.backtest.increment_date()
             interesting_df = trade_handler.analyse_historical_data()
-            qty, total = trade_handler.calculate_num_shares_to_buy(interesting_df)
-            trade_handler.calculate_tp_sl(qty, total)
+            trade = trade_handler.create_trade(interesting_df)
+            trade_handler.make_trade(trade)
+
+
 
             # Ensure loop is not executing too fast.
             time_taken = dt.timedelta(seconds=(time.time() - start_time)).total_seconds()

@@ -1,7 +1,8 @@
 from src.data_handlers.historical_data_handler import HistoricalDataHandler
+from src.data_handlers import request_handler
+from src.trades.trade import Trade
 import random
 import math
-import pandas as pd
 
 
 class TradeHandler:
@@ -9,6 +10,7 @@ class TradeHandler:
         self.backtest = backtest
         self.hist_data_handler = HistoricalDataHandler(start_date=backtest.start_date)
         self.tickers = tickers
+        self.open_trades = []
 
     def analyse_historical_data(self):
 
@@ -20,20 +22,39 @@ class TradeHandler:
         return interesting_stock_df
 
     def calculate_num_shares_to_buy(self, interesting_df):
-        current_share_price = interesting_df["close"].iloc[-1]
+        buy_price = interesting_df["close"].iloc[-1]
         max_investment = self.backtest.total_balance * self.backtest.max_capital_pct_per_trade
         if max_investment > self.backtest.available_balance:
             max_investment = self.backtest.available_balance
-        if current_share_price <= max_investment:
-            qty = math.floor(max_investment / current_share_price)
-            investment_total = qty * current_share_price
+        if buy_price <= max_investment:
+            qty = math.floor(max_investment / buy_price)
+            investment_total = qty * buy_price
         else:
             # Share price is higher than available_balance
             raise
-        return qty, investment_total
+        return buy_price, qty, investment_total
 
     def calculate_tp_sl(self, qty, investment_total):
         # Calculate TP/SL
         tp = (investment_total * self.backtest.tp_limit) / qty
         sl = (investment_total * self.backtest.sl_limit) / qty
         return tp, sl
+
+    def create_trade(self, interesting_df):
+        buy_price, qty, investment_total = self.calculate_num_shares_to_buy(interesting_df)
+        tp, sl = self.calculate_tp_sl(qty, investment_total)
+        trade = Trade(ticker=interesting_df.ticker,
+                      buy_date=self.backtest.backtest_date,
+                      buy_price=buy_price,
+                      share_qty=qty,
+                      investment_total=investment_total,
+                      take_profit=tp,
+                      stop_loss=sl)
+        return trade
+
+    def make_trade(self, trade):
+        json_trade = trade.to_JSON_serializable()
+        response = request_handler.post("/trades", json_trade)
+        trade.trade_id = response.json().get("trade_id")
+        self.open_trades.append(trade)
+
