@@ -1,8 +1,12 @@
 from src.data_handlers.historical_data_handler import HistoricalDataHandler
+from src.exceptions.custom_exceptions import TradeCreationError, InvalidHistoricalDataIndexError
 from src.data_handlers import request_handler
 from src.trades.trade import Trade
 import random
 import math
+import logging
+
+logger = logging.getLogger("trade_handler")
 
 
 class TradeHandler:
@@ -13,13 +17,19 @@ class TradeHandler:
         self.open_trades = []
 
     def analyse_historical_data(self):
+        while True:
+            try:
+                interesting_tickers = [random.choice(self.tickers)]
+                interesting_stock = interesting_tickers[0]
 
-        interesting_tickers = [random.choice(self.tickers)]
-        interesting_stock = interesting_tickers[0]
-
-        interesting_stock_df = self.hist_data_handler.get_hist_dataframe(interesting_stock, num_weeks=16,
-                                                                         backtest_date=self.backtest.backtest_date)
-        return interesting_stock_df
+                interesting_stock_df = self.hist_data_handler.get_hist_dataframe(interesting_stock, num_weeks=16,
+                                                                                 backtest_date=self.backtest.backtest_date)
+                return interesting_stock_df
+            except FileNotFoundError:
+                logger.debug(f"CSV file for '{interesting_stock}' could not be found, possibly has been recognised as "
+                             f"invalid. Choosing new ticker as 'interesting'")
+            except InvalidHistoricalDataIndexError as e:
+                logger.debug(e)
 
     def calculate_num_shares_to_buy(self, interesting_df):
         buy_price = interesting_df["close"].iloc[-1]
@@ -31,7 +41,8 @@ class TradeHandler:
             investment_total = qty * buy_price
         else:
             # Share price is higher than available_balance
-            raise
+            raise TradeCreationError(f"Available balance ({self.backtest.available_balance}) can not cover a single "
+                                     f"share ({buy_price}).")
         return buy_price, qty, investment_total
 
     def calculate_tp_sl(self, qty, investment_total):
@@ -53,6 +64,7 @@ class TradeHandler:
         return trade
 
     def make_trade(self, trade):
+        self.backtest.available_balance -= trade.investment_total
         json_trade = trade.to_JSON_serializable()
         response = request_handler.post("/trades", json_trade)
         trade.trade_id = response.json().get("trade_id")

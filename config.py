@@ -8,7 +8,10 @@ def logging_config():
     logging.basicConfig(level=logging.DEBUG, format=log_format_str)
 
     # Set log level for requests to data access api.
-    logging.getLogger("requests").setLevel(logging.INFO)
+    logging.getLogger("request_handler").setLevel(logging.INFO)
+
+    # Set log level for trade processes.
+    logging.getLogger("trade_handler").setLevel(logging.DEBUG)
 
     # Set log level for requests to yahoo finance.
     logging.getLogger("urllib3").setLevel(logging.WARNING)

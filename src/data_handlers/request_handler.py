@@ -6,7 +6,7 @@ import requests
 import logging
 import time
 
-logger = logging.getLogger("requests")
+logger = logging.getLogger("request_handler")
 URL = None
 max_attempts = 5
 retry_delay_seconds = 3

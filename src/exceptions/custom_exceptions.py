@@ -15,6 +15,13 @@ class InvalidHistoricalDataIndexError(Exception):
         super().__init__(self.message)
 
 
+class TradeCreationError(Exception):
+    """ Exception raised when a start date index value is a date that comes before the very first entry in a CSV."""
+
+    def __init__(self, reason):
+        self.message = f"Could not create trade: {reason}"
+        super().__init__(self.message)
+
 class HistoricalDataValidationError(Exception):
     """ Exception raised when validator detects the given dataset is invalid. """
 
