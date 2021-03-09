@@ -100,7 +100,6 @@ def post(endpoint, data):
     while True:
         attempts += 1
         try:
-            print(data)
             response = requests.post(URL + endpoint, json=data)
             break
         except requests.exceptions.ConnectionError as e:

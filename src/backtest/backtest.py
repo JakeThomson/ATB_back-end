@@ -78,7 +78,7 @@ class BacktestController:
 
             # Ensure loop is not executing too fast.
             time_taken = dt.timedelta(seconds=(time.time() - start_time)).total_seconds()
-            while time_taken < 3:
+            while time_taken < 1.5:
                 time_taken = dt.timedelta(seconds=(time.time() - start_time)).total_seconds()
                 time.sleep(0.3)
 

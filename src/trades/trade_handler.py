@@ -1,10 +1,12 @@
 from src.data_handlers.historical_data_handler import HistoricalDataHandler
+from src.trades import graph_composer
 from src.exceptions.custom_exceptions import TradeCreationError, InvalidHistoricalDataIndexError, TradeAnalysisError
 from src.data_handlers import request_handler
 from src.trades.trade import Trade
 import random
 import math
 import logging
+import json
 
 logger = logging.getLogger("trade_handler")
 
@@ -27,8 +29,8 @@ class TradeHandler:
                                                                                      backtest_date=self.backtest.backtest_date)
                     return interesting_stock_df
                 except FileNotFoundError:
-                    logger.debug(f"CSV file for '{interesting_stock}' could not be found, possibly has been recognised as "
-                                 f"invalid. Choosing new ticker as 'interesting'")
+                    logger.debug(f"CSV file for '{interesting_stock}' could not be found, possibly has been "
+                                 f"recognised as invalid. Choosing new ticker as 'interesting'")
                 except InvalidHistoricalDataIndexError as e:
                     logger.debug(e)
         else:
@@ -44,8 +46,8 @@ class TradeHandler:
             investment_total = qty * buy_price
         else:
             # Share price is higher than available_balance
-            raise TradeCreationError(f"Available balance ({self.backtest.available_balance}) can not cover a single "
-                                     f"share ({buy_price}).")
+            raise TradeCreationError(f"Available balance ({'£{:,.2f}'.format(self.backtest.available_balance)}) "
+                                     f"can not cover a single share ({'£{:,.2f}'.format(buy_price)})")
         return buy_price, qty, investment_total
 
     def calculate_tp_sl(self, qty, investment_total):
@@ -63,6 +65,7 @@ class TradeHandler:
                       investment_total=investment_total,
                       take_profit=tp,
                       stop_loss=sl)
+        trade.figure, trade.figPct = graph_composer.draw_at_figure(trade)
         return trade
 
     def make_trade(self, trade):
@@ -72,5 +75,7 @@ class TradeHandler:
         body = {"available_balance": self.backtest.available_balance}
         request_handler.patch("/backtest_properties/available_balance", body)
         trade.trade_id = response.json().get("trade_id")
+        logger.debug(f"Bought {trade.share_qty} shares in {trade.ticker} for "
+                     f"{'£{:,.2f}'.format(trade.investment_total)}")
         self.open_trades.append(trade)
 
