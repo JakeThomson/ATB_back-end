@@ -1,5 +1,5 @@
 import datetime as dt
-from src.exceptions.custom_exceptions import TradeCreationError
+from src.exceptions.custom_exceptions import TradeCreationError, TradeAnalysisError
 from src.data_handlers import request_handler
 from src.data_validators import date_validator
 from src.trades.trade_handler import TradeHandler
@@ -73,7 +73,7 @@ class BacktestController:
                 trade = trade_handler.create_trade(interesting_df)
                 trade_handler.make_trade(trade)
 
-            except TradeCreationError as e:
+            except (TradeCreationError, TradeAnalysisError) as e:
                 logger.debug(e)
 
             # Ensure loop is not executing too fast.

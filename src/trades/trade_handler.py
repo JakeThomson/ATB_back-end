@@ -1,5 +1,5 @@
 from src.data_handlers.historical_data_handler import HistoricalDataHandler
-from src.exceptions.custom_exceptions import TradeCreationError, InvalidHistoricalDataIndexError
+from src.exceptions.custom_exceptions import TradeCreationError, InvalidHistoricalDataIndexError, TradeAnalysisError
 from src.data_handlers import request_handler
 from src.trades.trade import Trade
 import random
@@ -17,19 +17,22 @@ class TradeHandler:
         self.open_trades = []
 
     def analyse_historical_data(self):
-        while True:
-            try:
-                interesting_tickers = [random.choice(self.tickers)]
-                interesting_stock = interesting_tickers[0]
+        if random.random() < 0.6:
+            while True:
+                try:
+                    interesting_tickers = [random.choice(self.tickers)]
+                    interesting_stock = interesting_tickers[0]
 
-                interesting_stock_df = self.hist_data_handler.get_hist_dataframe(interesting_stock, num_weeks=16,
-                                                                                 backtest_date=self.backtest.backtest_date)
-                return interesting_stock_df
-            except FileNotFoundError:
-                logger.debug(f"CSV file for '{interesting_stock}' could not be found, possibly has been recognised as "
-                             f"invalid. Choosing new ticker as 'interesting'")
-            except InvalidHistoricalDataIndexError as e:
-                logger.debug(e)
+                    interesting_stock_df = self.hist_data_handler.get_hist_dataframe(interesting_stock, num_weeks=16,
+                                                                                     backtest_date=self.backtest.backtest_date)
+                    return interesting_stock_df
+                except FileNotFoundError:
+                    logger.debug(f"CSV file for '{interesting_stock}' could not be found, possibly has been recognised as "
+                                 f"invalid. Choosing new ticker as 'interesting'")
+                except InvalidHistoricalDataIndexError as e:
+                    logger.debug(e)
+        else:
+            raise TradeAnalysisError(self.backtest.backtest_date)
 
     def calculate_num_shares_to_buy(self, interesting_df):
         buy_price = interesting_df["close"].iloc[-1]
@@ -46,7 +49,6 @@ class TradeHandler:
         return buy_price, qty, investment_total
 
     def calculate_tp_sl(self, qty, investment_total):
-        # Calculate TP/SL
         tp = (investment_total * self.backtest.tp_limit) / qty
         sl = (investment_total * self.backtest.sl_limit) / qty
         return tp, sl
@@ -67,6 +69,8 @@ class TradeHandler:
         self.backtest.available_balance -= trade.investment_total
         json_trade = trade.to_JSON_serializable()
         response = request_handler.post("/trades", json_trade)
+        body = {"available_balance": self.backtest.available_balance}
+        request_handler.patch("/backtest_properties/available_balance", body)
         trade.trade_id = response.json().get("trade_id")
         self.open_trades.append(trade)
 
