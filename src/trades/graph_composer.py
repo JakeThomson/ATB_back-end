@@ -62,8 +62,8 @@ def draw_closed_trade_figure(trade):
         line=dict(color=line_colour)
     ))
     fig.update_layout(
-        height=50,
-        width=150,
+        height=36,
+        width=75,
         yaxis=dict(visible=False),
         xaxis=dict(visible=False),
         margin=dict(t=0, l=0, r=0, b=0),

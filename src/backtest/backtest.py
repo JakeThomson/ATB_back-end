@@ -5,6 +5,7 @@ from src.data_validators import date_validator
 from src.trades.trade_handler import TradeHandler
 import logging
 import time
+import copy
 
 logger = logging.getLogger("backtest")
 
@@ -37,6 +38,12 @@ class Backtest:
         body = {"backtest_date": str(self.backtest_date), "start_balance": self.start_balance}
 
         request_handler.put("/backtest_properties/initialise", body)
+
+    def to_JSON_serializable(self):
+        backtest_dict = copy.deepcopy(self.__dict__)
+        backtest_dict['backtest_date'] = str(backtest_dict["backtest_date"])
+        backtest_dict['start_date'] = str(backtest_dict["start_date"])
+        return backtest_dict
 
     def increment_date(self):
         """ Increases the backtest date to the next valid date, and updates the date in the database.

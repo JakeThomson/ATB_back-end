@@ -9,7 +9,8 @@ class Trade:
         self.buy_price = buy_price
         self.sell_date = None
         self.sell_price = None
-        self.profit_loss = None
+        self.profit_loss = 0
+        self.profit_loss_pct = 0
         self.current_price = buy_price
         self.share_qty = share_qty
         self.investment_total = investment_total
