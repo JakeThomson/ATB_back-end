@@ -1,7 +1,7 @@
 import pytest
 import pandas as pd
 from pytest_cases import parametrize, parametrize_with_cases
-from data_validators import date_validator
+from src.data_validators import date_validator
 
 
 class DateCases:

@@ -1,8 +1,9 @@
-from data_handlers.historical_data_handler import HistoricalDataHandler
-from data_handlers import request_handler
-from backtest.backtest import Backtest, BacktestController
+from src.data_handlers.historical_data_handler import HistoricalDataHandler
+from src.data_handlers import request_handler
+from src.backtest.backtest import Backtest, BacktestController
 import config
 import sys
+import datetime as dt
 
 
 # Main code
@@ -15,13 +16,14 @@ if __name__ == '__main__':
     request_handler.set_environment(environment)
 
     # Download/update historical data.
-    hist_data_mgr = HistoricalDataHandler(market_index="S&P500", max_threads=7)
-    tickers = hist_data_mgr.grab_tickers()
-    hist_data_mgr.threaded_data_download(tickers)
+    start_date = dt.datetime(2015, 1, 1)
+    hist_data_mgr = HistoricalDataHandler(start_date=start_date, market_index="S&P500", max_threads=7)
+    tickers = hist_data_mgr.get_tickers()
+    # hist_data_mgr.threaded_data_download(tickers)
 
     # Initialise backtest.
-    backtest = Backtest(start_balance=15000)
-    backtest_controller = BacktestController(backtest)
+    backtest = Backtest(start_balance=15000, start_date=start_date)
+    backtest_controller = BacktestController(backtest, tickers)
 
     # Start backtest.
     backtest_controller.start_backtest()
