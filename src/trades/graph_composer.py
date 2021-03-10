@@ -52,3 +52,35 @@ def draw_open_trade_figure(trade):
     # Save to JSON to allow it to be saved in the MySQL table.
     fig = fig.to_json()
     return fig, cp_percent
+
+
+def draw_closed_trade_figure(trade):
+    line_colour = "mediumseagreen" if trade.sell_price > trade.buy_price else "rgb(211,63,73)"
+    fig = go.Figure(go.Scatter(
+        x=trade.historical_data.index,
+        y=trade.historical_data["close"],
+        line=dict(color=line_colour)
+    ))
+    fig.update_layout(
+        height=50,
+        width=150,
+        yaxis=dict(visible=False),
+        xaxis=dict(visible=False),
+        margin=dict(t=0, l=0, r=0, b=0),
+        plot_bgcolor='rgba(0,0,0,0)',
+        showlegend=False
+    )
+    fig.add_trace(dict(
+        x=[trade.buy_date, trade.sell_date],
+        y=[trade.buy_price, trade.sell_price],
+        mode="markers",
+        marker_symbol="x-thin",
+        marker_line_color="rgba(0,0,0,0.9)",
+        marker_line_width=2,
+        marker_size=7,
+        showlegend=False,
+        hoverinfo='skip'
+    ))
+    # Save to JSON to allow it to be saved in the MySQL table.
+    fig = fig.to_json()
+    return fig

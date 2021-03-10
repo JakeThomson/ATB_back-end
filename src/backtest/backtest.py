@@ -34,7 +34,7 @@ class Backtest:
         # TODO: Replace this placeholder with an actual empty graph JSON object.
         self.total_profit_loss_graph = {"graph": "placeholder"}
 
-        body = {"backtest_date": self.backtest_date, "start_balance": self.start_balance}
+        body = {"backtest_date": str(self.backtest_date), "start_balance": self.start_balance}
 
         request_handler.put("/backtest_properties/initialise", body)
 
@@ -73,6 +73,9 @@ class BacktestController:
             start_time = time.time()
             self.backtest.increment_date()
 
+            if len(trade_handler.open_trades) > 0:
+                trade_handler.analyse_open_trades()
+
             # Try to invest in new stocks, move to the next day if nothing good is found or if balance is too low.
             try:
                 # Select the stock that has the most confidence from the analysis.
@@ -86,7 +89,7 @@ class BacktestController:
 
             # Ensure loop is not executing too fast.
             time_taken = dt.timedelta(seconds=(time.time() - start_time)).total_seconds()
-            while time_taken < 1.5:
+            while time_taken < 3:
                 time_taken = dt.timedelta(seconds=(time.time() - start_time)).total_seconds()
                 time.sleep(0.3)
 
