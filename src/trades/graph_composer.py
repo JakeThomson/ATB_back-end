@@ -65,7 +65,9 @@ def draw_closed_trade_figure(trade):
     :param trade: A Trade object containing the trade data.
     :return figure: A JSON object containing the figure object to be send to the database and read by the UI.
     """
+    # Set the line colour based on the profit/loss value.
     line_colour = "mediumseagreen" if trade.sell_price > trade.buy_price else "rgb(211,63,73)"
+    # Trim the dataset so that the buy/sell points are not so squeezed together on graph.
     trim_date = date_validator.validate_date(trade.buy_date - dt.timedelta(weeks=2), 1)
     trimmed_data = trade.historical_data[trim_date:trade.sell_date]
     fig = go.Figure(go.Scatter(
@@ -83,6 +85,7 @@ def draw_closed_trade_figure(trade):
         plot_bgcolor='rgba(0,0,0,0)',
         showlegend=False
     )
+    # Add the crosses to the graph to show where the bot bought and sold.
     fig.add_trace(dict(
         x=[trade.buy_date, trade.sell_date],
         y=[trade.buy_price, trade.sell_price],
@@ -131,6 +134,8 @@ def update_profit_loss_graph(backtest):
     :param backtest: The backtest object.
     :return fig: The profit/loss figure object.
     """
+    # Set the opacity of the 'start balance' line, it stays fully visible whilst the profit loss is within a 10%
+    # difference range, and slowly fades out as it gets further away until it reaches 30%.
     if backtest.start_balance * 1.3 >= backtest.total_balance >= backtest.start_balance * 1.1:
         m = -1 / (backtest.start_balance * 0.2)
         alpha = m * (backtest.total_balance - (backtest.start_balance * 1.1)) + 1
@@ -140,9 +145,12 @@ def update_profit_loss_graph(backtest):
         alpha = 0
     else:
         alpha = 255
+    # Load figure from JSON string to allow it to be easily modified.
     fig = plotly.io.from_json(backtest.total_profit_loss_graph)
+    # Append new date and total balance to x and y tuple objects by adding them as a single element tuple.
     fig.data[0].x += (backtest.backtest_date,)
     fig.data[0].y += (backtest.total_balance,)
+    # Set the line colour based on the profit/loss value.
     fig.data[0].line.color = "mediumseagreen" if backtest.total_profit_loss >=0 else "rgb(211,63,73)"
     fig.data[0].mode = "lines"
     if len(fig.data) == 1:
