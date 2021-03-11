@@ -1,6 +1,6 @@
 import datetime as dt
 from src.exceptions.custom_exceptions import TradeCreationError, TradeAnalysisError
-from src.trades.graph_composer import create_inititial_profit_loss_figure
+from src.trades.graph_composer import create_initial_profit_loss_figure
 from src.data_handlers import request_handler
 from src.data_validators import date_validator
 from src.trades.trade_handler import TradeHandler
@@ -34,7 +34,7 @@ class Backtest:
         self.total_profit_loss_pct = 0
         self.is_paused = False
         # TODO: Replace this placeholder with an actual empty graph JSON object.
-        self.total_profit_loss_graph = create_inititial_profit_loss_figure(start_date, start_balance)
+        self.total_profit_loss_graph = create_initial_profit_loss_figure(start_date, start_balance)
 
         body = {
             "backtest_date": str(self.backtest_date),

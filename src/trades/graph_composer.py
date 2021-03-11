@@ -59,6 +59,12 @@ def draw_open_trade_figure(trade):
 
 
 def draw_closed_trade_figure(trade):
+    """ Draws a custom Figure object that visualises where the bot bought and sold the stocks on in relation to the
+        stock's recent history..
+
+    :param trade: A Trade object containing the trade data.
+    :return figure: A JSON object containing the figure object to be send to the database and read by the UI.
+    """
     line_colour = "mediumseagreen" if trade.sell_price > trade.buy_price else "rgb(211,63,73)"
     trim_date = date_validator.validate_date(trade.buy_date - dt.timedelta(weeks=2), 1)
     trimmed_data = trade.historical_data[trim_date:trade.sell_date]
@@ -93,7 +99,14 @@ def draw_closed_trade_figure(trade):
     return fig
 
 
-def create_inititial_profit_loss_figure(date, total_balance):
+def create_initial_profit_loss_figure(date, total_balance):
+    """ Creates a plain figure object for the profit/loss graph, this will be the graph that gets updated as the
+        backtest progresses.
+
+    :param date: The starting date in the backtest.
+    :param total_balance: The starting balance in the backtest.
+    :return fig: The profit/loss figure object.
+    """
     fig = go.Figure(go.Scatter(
         x=[date],
         y=[total_balance],
@@ -111,7 +124,13 @@ def create_inititial_profit_loss_figure(date, total_balance):
     fig = fig.to_json()
     return fig
 
+
 def update_profit_loss_graph(backtest):
+    """ Updates the profit/loss graph held in the backtest properties by appending values into the data.
+
+    :param backtest: The backtest object.
+    :return fig: The profit/loss figure object.
+    """
     if backtest.start_balance * 1.3 >= backtest.total_balance >= backtest.start_balance * 1.1:
         m = -1 / (backtest.start_balance * 0.2)
         alpha = m * (backtest.total_balance - (backtest.start_balance * 1.1)) + 1
