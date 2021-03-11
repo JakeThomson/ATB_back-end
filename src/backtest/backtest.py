@@ -1,10 +1,12 @@
 import datetime as dt
 from src.exceptions.custom_exceptions import TradeCreationError, TradeAnalysisError
+from src.trades.graph_composer import create_initial_profit_loss_figure
 from src.data_handlers import request_handler
 from src.data_validators import date_validator
 from src.trades.trade_handler import TradeHandler
 import logging
 import time
+import copy
 
 logger = logging.getLogger("backtest")
 
@@ -28,15 +30,25 @@ class Backtest:
         self.start_balance = start_balance
         self.total_balance = start_balance
         self.available_balance = start_balance
-        self.total_profit_loss_value = 0
-        self.total_profit_loss_percentage = 0
+        self.total_profit_loss = 0
+        self.total_profit_loss_pct = 0
         self.is_paused = False
         # TODO: Replace this placeholder with an actual empty graph JSON object.
-        self.total_profit_loss_graph = {"graph": "placeholder"}
+        self.total_profit_loss_graph = create_initial_profit_loss_figure(start_date, start_balance)
 
-        body = {"backtest_date": self.backtest_date, "start_balance": self.start_balance}
+        body = {
+            "backtest_date": str(self.backtest_date),
+            "start_balance": self.start_balance,
+            "total_profit_loss_graph": self.total_profit_loss_graph
+        }
 
         request_handler.put("/backtest_properties/initialise", body)
+
+    def to_JSON_serializable(self):
+        backtest_dict = copy.deepcopy(self.__dict__)
+        backtest_dict['backtest_date'] = str(backtest_dict["backtest_date"])
+        backtest_dict['start_date'] = str(backtest_dict["start_date"])
+        return backtest_dict
 
     def increment_date(self):
         """ Increases the backtest date to the next valid date, and updates the date in the database.
@@ -73,6 +85,9 @@ class BacktestController:
             start_time = time.time()
             self.backtest.increment_date()
 
+            if len(trade_handler.open_trades) > 0:
+                trade_handler.analyse_open_trades()
+
             # Try to invest in new stocks, move to the next day if nothing good is found or if balance is too low.
             try:
                 # Select the stock that has the most confidence from the analysis.
@@ -86,7 +101,7 @@ class BacktestController:
 
             # Ensure loop is not executing too fast.
             time_taken = dt.timedelta(seconds=(time.time() - start_time)).total_seconds()
-            while time_taken < 1.5:
+            while time_taken < 3:
                 time_taken = dt.timedelta(seconds=(time.time() - start_time)).total_seconds()
                 time.sleep(0.3)
 

@@ -33,7 +33,7 @@ def put(endpoint, data):
     while True:
         attempts += 1
         try:
-            response = requests.put(URL + endpoint, data=data)
+            response = requests.put(URL + endpoint, json=data)
             break
         except requests.exceptions.ConnectionError as e:
             # Handle connection errors.

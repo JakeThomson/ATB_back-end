@@ -92,6 +92,7 @@ class TradeHandler:
         buy_price, qty, investment_total = self.calculate_num_shares_to_buy(interesting_df)
         tp, sl = self.calculate_tp_sl(qty, investment_total)
         trade = Trade(ticker=interesting_df.ticker,
+                      historical_data=interesting_df,
                       buy_date=self.backtest.backtest_date,
                       buy_price=buy_price,
                       share_qty=qty,
@@ -99,7 +100,7 @@ class TradeHandler:
                       take_profit=tp,
                       stop_loss=sl)
         # Draws the open trade graph using the new trade object.
-        trade.figure, trade.figPct = graph_composer.draw_open_trade_figure(trade)
+        trade.figure, trade.figure_pct = graph_composer.draw_open_trade_figure(trade)
         return trade
 
     def make_trade(self, trade):
@@ -109,6 +110,7 @@ class TradeHandler:
         :param trade: A trade object holding all information on the opened trade.
         :return: none
         """
+        logger.debug(f"Buying {trade.share_qty} shares of {trade.ticker}.")
         self.backtest.available_balance -= trade.investment_total
         # Convert the object to allow it to be serialized correctly for storage within the MySQL database.
         json_trade = trade.to_JSON_serializable()
@@ -116,9 +118,69 @@ class TradeHandler:
         # object for easy future reference.
         response = request_handler.post("/trades", json_trade)
         trade.trade_id = response.json().get("trade_id")
-        body = {"available_balance": self.backtest.available_balance}
-        request_handler.patch("/backtest_properties/available_balance", body)
+        request_handler.put("/backtest_properties", self.backtest.to_JSON_serializable())
         logger.debug(f"Bought {trade.share_qty} shares in {trade.ticker} for "
                      f"{'£{:,.2f}'.format(trade.investment_total)}")
         self.open_trades.append(trade)
 
+    def close_trade(self, trade):
+        """ Performs all calculations that will affect the backtest properties when the trade has sold.
+
+        :param trade: The trade to be closed.
+        :return: none
+        """
+        logger.debug(f"Closing trade {trade.ticker} with {'profit' if trade.profit_loss > 0 else 'loss'} "
+                     f"of {trade.profit_loss}.")
+        trade.sell_price = trade.current_price
+        trade.sell_date = self.backtest.backtest_date
+        self.backtest.available_balance += trade.sell_price * trade.share_qty
+        trade.profit_loss = (trade.current_price * trade.share_qty) - trade.investment_total
+        trade.profit_loss_pct = (trade.profit_loss / trade.investment_total) * 100
+        self.backtest.total_balance += trade.profit_loss
+        self.backtest.total_profit_loss = self.backtest.total_balance - self.backtest.start_balance
+        self.backtest.total_profit_loss_pct = self.backtest.total_profit_loss / self.backtest.start_balance * 100
+        trade.figure = graph_composer.draw_closed_trade_figure(trade)
+
+    def analyse_open_trades(self):
+        """ Iterates through all trades in the open_trades array stored in the trade_handler's properties. Sells trades
+            who's prices have exceeded their take profit/stop loss limits and updates the price for trades that have
+            not yet hit them.
+
+        :return: none
+        """
+
+        # All open and closed trades will be sent to the api for processing at once, so store their JSON serializable
+        # objects in separate arrays.
+        json_open_trades_array = []
+        json_closed_trades_array = []
+        for i, trade in enumerate(self.open_trades):
+            # Get the respective day's data for the targeted trade from the downloaded CSVs and append to historical
+            # data, trimming off the first column to keep the dataframe short.
+            new_data = self.hist_data_handler.get_hist_dataframe(trade.ticker, self.backtest.backtest_date, num_weeks=0)
+            trade.historical_data = trade.historical_data[1:].append(new_data)
+            trade.current_price = trade.historical_data['close'][-1]
+            trade.profit_loss = (trade.current_price * trade.share_qty) - trade.investment_total
+            trade.profit_loss_pct = (trade.profit_loss / trade.investment_total) * 100
+            trade.figure, trade.figure_pct = graph_composer.draw_open_trade_figure(trade)
+
+            if trade.current_price > trade.take_profit or trade.current_price < trade.stop_loss:
+                # Close the trade
+                self.close_trade(trade)
+                del self.open_trades[i]
+                # Add json object to closed trades array.
+                json_trade = trade.to_JSON_serializable()
+                json_closed_trades_array.append(json_trade)
+                pass
+            else:
+                # Add updarted json object to open trades array.
+                json_trade = trade.to_JSON_serializable()
+                json_open_trades_array.append(json_trade)
+                pass
+
+        # Generate profit/loss graph.
+        self.backtest.total_profit_loss_graph = graph_composer.update_profit_loss_graph(self.backtest)
+        # Send open and closed trades to the database to be updated/removed in the database accordingly.
+        request_handler.put(f"/trades",
+                            {"open_trades": json_open_trades_array, "closed_trades": json_closed_trades_array})
+        # Update backtest properties.
+        request_handler.put("/backtest_properties", self.backtest.to_JSON_serializable())

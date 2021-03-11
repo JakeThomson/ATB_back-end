@@ -98,13 +98,13 @@ class HistoricalDataHandler:
         self.num_tickers = len(tickers)
         return tickers
 
-    def get_hist_dataframe(self, ticker, backtest_date, num_weeks=12):
+    def get_hist_dataframe(self, ticker, backtest_date, num_weeks=12, num_days=0):
         historical_df = pd.read_csv(f"{self.file_path}{ticker}.csv")
         historical_df["Date"] = pd.to_datetime(historical_df["Date"])
         historical_df = historical_df.set_index("Date")
 
         # Only get the 12 weeks of data before the backtest_date.
-        buffer_date = date_validator.validate_date((backtest_date - dt.timedelta(weeks=num_weeks)), -1)
+        buffer_date = date_validator.validate_date((backtest_date - dt.timedelta(weeks=num_weeks, days=num_days)), -1)
 
         first_date_in_csv = historical_df.index[0]
         if buffer_date <= first_date_in_csv:
