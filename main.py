@@ -4,13 +4,33 @@ from src.backtest.backtest import Backtest, BacktestController
 import config
 import sys
 import datetime as dt
+import socketio
+import logging as log
+
+sio = socketio.Client()
+config.logging_config()
+
+
+@sio.event
+def connect():
+    log.info("Socket connected successfully")
+
+
+@sio.event
+def connect_error():
+    log.error("Failed to connect to socket")
+
+
+@sio.event
+def disconnect():
+    log.info("Socket disconnected")
 
 
 # Main code
 if __name__ == '__main__':
 
-    # Application setup.
-    config.logging_config()
+    sio.connect('http://localhost:8080')
+
     # Read command line argument to determine what environment URL to hit for the data access api.
     environment = str(sys.argv[1]) if len(sys.argv) == 2 else "prod"
     request_handler.set_environment(environment)
@@ -26,4 +46,5 @@ if __name__ == '__main__':
     backtest_controller = BacktestController(backtest, tickers)
 
     # Start backtest.
-    backtest_controller.start_backtest()
+    backtest_controller.start_backtest(sio)
+

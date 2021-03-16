@@ -32,7 +32,7 @@ class Backtest:
         self.available_balance = start_balance
         self.total_profit_loss = 0
         self.total_profit_loss_pct = 0
-        self.is_paused = False
+        self.is_paused = request_handler.get("/backtest_properties/is_paused").json().get("isPaused")
         # TODO: Replace this placeholder with an actual empty graph JSON object.
         self.total_profit_loss_graph = create_initial_profit_loss_figure(start_date, start_balance)
 
@@ -55,9 +55,10 @@ class Backtest:
 
         :return: none
         """
-        logger.info(f"BACKTEST DATE: {dt.datetime.strftime(self.backtest_date, '%Y-%m-%d')}")
         next_date = self.backtest_date + dt.timedelta(days=1)
         self.backtest_date = date_validator.validate_date(next_date, 1)
+
+        logger.info(f"BACKTEST DATE: {dt.datetime.strftime(self.backtest_date, '%Y-%m-%d')}")
 
         body = {
             "backtest_date": self.backtest_date
@@ -71,7 +72,7 @@ class BacktestController:
         self.backtest = backtest
         self.tickers = tickers
 
-    def start_backtest(self):
+    def start_backtest(self, sio):
         """ Holds the logic for the backtest loop:
         1. Increment Date.
         2. Analyse stocks.
@@ -80,16 +81,19 @@ class BacktestController:
         :return: none
         """
 
+        @sio.on('playpause')
+        def toggle_pause(data):
+            self.backtest.is_paused = data['isPaused']
+
         trade_handler = TradeHandler(self.backtest, self.tickers)
 
         last_state = "executing"
         while self.backtest.backtest_date < (dt.datetime.today() - dt.timedelta(days=1)):
-            is_paused = request_handler.get("/backtest_properties/is_paused").json().get("isPaused")
-            if is_paused:
+            if self.backtest.is_paused:
                 if last_state != "paused":
                     logger.info("Backtest has been paused")
                     last_state = "paused"
-                time.sleep(3)
+                time.sleep(0.3)
             else:
                 if last_state != "executing":
                     logger.info("Backtest has been resumed")
