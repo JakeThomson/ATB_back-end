@@ -23,7 +23,7 @@ class TradeCreationError(Exception):
 class TradeAnalysisError(Exception):
     """ Exception raised when no interesting stocks have been found in the analysis."""
     def __init__(self, date):
-        self.message = f"No interesting tickers identified to be invested into on '{date}'."
+        self.message = f"No interesting tickers identified to be invested into"
         super().__init__(self.message)
 
 

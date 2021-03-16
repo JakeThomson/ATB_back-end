@@ -21,6 +21,38 @@ def set_environment(environment):
     logger.info(f"Connecting to data access API on {URL}")
 
 
+def get(endpoint):
+    """ Sends a GET request to the specified endpoint.
+
+    :param endpoint: The endpoint to send the request to.
+    :return response: The response object.
+    """
+    logger.debug(f"Sending GET request to '{URL}{endpoint}'")
+    attempts = 0
+    while True:
+        attempts += 1
+        try:
+            response = requests.get(URL + endpoint)
+            break
+        except requests.exceptions.ConnectionError as e:
+            # Handle connection errors.
+            if attempts < max_attempts:
+                logger.warning(f"Could not connect to {URL}, retrying in {retry_delay_seconds} seconds...")
+                time.sleep(3)
+                continue
+            else:
+                logger.critical(f"Could not connect to {URL} after {attempts} attempts to send GET request to {endpoint}.")
+                exit()
+
+    if attempts > 1:
+        logger.info(f"Successfully sent PUT request to {URL}{endpoint} after {attempts} attempts")
+
+    if response.status_code >= 400:
+        logger.error(f"Status code {response.status_code} received when sending GET request to {URL}{endpoint}")
+
+    return response
+
+
 def put(endpoint, data):
     """ Sends a PUT request to the specified endpoint.
 

@@ -110,7 +110,8 @@ class TradeHandler:
         :param trade: A trade object holding all information on the opened trade.
         :return: none
         """
-        logger.debug(f"Buying {trade.share_qty} shares of {trade.ticker}.")
+        logger.debug(f"Buying {trade.share_qty} shares of {trade.ticker} for "
+                     f"{'£{:,.2f}'.format(trade.investment_total)}")
         self.backtest.available_balance -= trade.investment_total
         # Convert the object to allow it to be serialized correctly for storage within the MySQL database.
         json_trade = trade.to_JSON_serializable()
@@ -119,8 +120,6 @@ class TradeHandler:
         response = request_handler.post("/trades", json_trade)
         trade.trade_id = response.json().get("trade_id")
         request_handler.put("/backtest_properties", self.backtest.to_JSON_serializable())
-        logger.debug(f"Bought {trade.share_qty} shares in {trade.ticker} for "
-                     f"{'£{:,.2f}'.format(trade.investment_total)}")
         self.open_trades.append(trade)
 
     def close_trade(self, trade):

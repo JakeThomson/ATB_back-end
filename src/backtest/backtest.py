@@ -55,6 +55,7 @@ class Backtest:
 
         :return: none
         """
+        logger.info(f"BACKTEST DATE: {dt.datetime.strftime(self.backtest_date, '%Y-%m-%d')}")
         next_date = self.backtest_date + dt.timedelta(days=1)
         self.backtest_date = date_validator.validate_date(next_date, 1)
 
@@ -81,28 +82,40 @@ class BacktestController:
 
         trade_handler = TradeHandler(self.backtest, self.tickers)
 
+        last_state = "executing"
         while self.backtest.backtest_date < (dt.datetime.today() - dt.timedelta(days=1)):
-            start_time = time.time()
-            self.backtest.increment_date()
+            is_paused = request_handler.get("/backtest_properties/is_paused").json().get("isPaused")
+            if is_paused:
+                if last_state != "paused":
+                    logger.info("Backtest has been paused")
+                    last_state = "paused"
+                time.sleep(3)
+            else:
+                if last_state != "executing":
+                    logger.info("Backtest has been resumed")
+                    last_state = "executing"
 
-            if len(trade_handler.open_trades) > 0:
-                trade_handler.analyse_open_trades()
+                start_time = time.time()
+                self.backtest.increment_date()
 
-            # Try to invest in new stocks, move to the next day if nothing good is found or if balance is too low.
-            try:
-                # Select the stock that has the most confidence from the analysis.
-                interesting_df = trade_handler.analyse_historical_data()
-                # Go to automatically open an order for that stock using the rules set.
-                trade = trade_handler.create_trade(interesting_df)
-                trade_handler.make_trade(trade)
+                if len(trade_handler.open_trades) > 0:
+                    trade_handler.analyse_open_trades()
 
-            except (TradeCreationError, TradeAnalysisError) as e:
-                logger.debug(e)
+                # Try to invest in new stocks, move to the next day if nothing good is found or if balance is too low.
+                try:
+                    # Select the stock that has the most confidence from the analysis.
+                    interesting_df = trade_handler.analyse_historical_data()
+                    # Go to automatically open an order for that stock using the rules set.
+                    trade = trade_handler.create_trade(interesting_df)
+                    trade_handler.make_trade(trade)
 
-            # Ensure loop is not executing too fast.
-            time_taken = dt.timedelta(seconds=(time.time() - start_time)).total_seconds()
-            while time_taken < 3:
+                except (TradeCreationError, TradeAnalysisError) as e:
+                    logger.debug(e)
+
+                # Ensure loop is not executing too fast.
                 time_taken = dt.timedelta(seconds=(time.time() - start_time)).total_seconds()
-                time.sleep(0.3)
+                while time_taken < 3:
+                    time_taken = dt.timedelta(seconds=(time.time() - start_time)).total_seconds()
+                    time.sleep(0.3)
 
         logger.info("Backtest completed.")
