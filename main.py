@@ -6,24 +6,43 @@ import sys
 import datetime as dt
 import socketio
 import logging as log
+import atexit
+import signal
 
+# Set up socket connection with the data-access api and the logging configurations.
 sio = socketio.Client()
 config.logging_config()
 
 
 @sio.event
 def connect():
+    """ Called when the socket connection is first made. """
     log.info("Socket connected successfully")
 
 
 @sio.event
 def connect_error():
+    """ Called when the socket connection has failed. """
     log.error("Failed to connect to socket")
 
 
 @sio.event
 def disconnect():
+    """ Called when the socket connection has been terminated (when the backend is shutting down). """
     log.info("Socket disconnected")
+    log.info("Back-end shutting down")
+
+
+def handle_exit(signum, frame):
+    """ Called when the application is manually stopped (CTRL+C, PyCharm 'STOP', etc.). """
+    sio.disconnect()
+    exit()
+
+
+# Listen for events that attempt to kill the program (CTRL+C, PyCharm 'STOP', etc.).
+atexit.register(handle_exit, None, None)
+signal.signal(signal.SIGTERM, handle_exit)
+signal.signal(signal.SIGINT, handle_exit)
 
 
 # Main code
