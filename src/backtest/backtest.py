@@ -13,28 +13,26 @@ logger = logging.getLogger("backtest")
 
 class Backtest:
 
-    # Global variables that will eventually be set in the UI.
-    max_capital_pct_per_trade = 0.25
-    tp_limit = 1.02
-    sl_limit = 0.99
-
-    def __init__(self, start_date=dt.datetime(2015, 1, 1), start_balance=15000):
+    def __init__(self, properties):
         """ Constructor class that instantiates the backtest object and simultaneously calls upon the backtest
             initialisation endpoint in the data access api.
 
-        :param start_date: a datetime object that the backtest will start on.
-        :param start_balance: an integer value that represents the money the backtest will start on.
+        :param properties: a dict object holding all properties of the backtest.
         """
-        self.start_date = start_date
-        self.backtest_date = start_date
-        self.start_balance = start_balance
-        self.total_balance = start_balance
-        self.available_balance = start_balance
+        self.start_date = properties['start_date']
+        self.backtest_date = self.start_date
+        self.start_balance = properties['start_balance']
+        self.total_balance = self.start_balance
+        self.available_balance = self.start_balance
         self.total_profit_loss = 0
         self.total_profit_loss_pct = 0
+        self.max_cap_pct_per_trade = properties['max_cap_pct_per_trade']
+        self.tp_limit = properties['tp_limit']
+        self.sl_limit = properties['sl_limit']
         self.is_paused = request_handler.get("/backtest_properties/is_paused").json().get("isPaused")
-        # TODO: Replace this placeholder with an actual empty graph JSON object.
-        self.total_profit_loss_graph = create_initial_profit_loss_figure(start_date, start_balance)
+        self.total_profit_loss_graph = create_initial_profit_loss_figure(self.start_date,
+                                                                         self.start_balance)
+        self.state = "active"
 
         body = {
             "backtest_date": str(self.backtest_date),
@@ -66,13 +64,7 @@ class Backtest:
 
         request_handler.patch("/backtest_properties/date", body)
 
-
-class BacktestController:
-    def __init__(self, backtest, tickers):
-        self.backtest = backtest
-        self.tickers = tickers
-
-    def start_backtest(self, sio):
+    def start_backtest(self, tickers):
         """ Holds the logic for the backtest loop:
         1. Increment Date.
         2. Analyse stocks.
@@ -80,16 +72,14 @@ class BacktestController:
 
         :return: none
         """
+        logger.info("*---------------------- Starting backtest ----------------------*")
+        trade_handler = TradeHandler(self, tickers)
 
-        @sio.on('playpause')
-        def toggle_pause(data):
-            self.backtest.is_paused = data['isPaused']
-
-        trade_handler = TradeHandler(self.backtest, self.tickers)
+        time.sleep(2)
 
         last_state = "executing"
-        while self.backtest.backtest_date < (dt.datetime.today() - dt.timedelta(days=1)):
-            if self.backtest.is_paused:
+        while self.backtest_date < (dt.datetime.today() - dt.timedelta(days=1)) and self.state == "active":
+            if self.is_paused:
                 if last_state != "paused":
                     logger.info("Backtest has been paused")
                     last_state = "paused"
@@ -100,7 +90,7 @@ class BacktestController:
                     last_state = "executing"
 
                 start_time = time.time()
-                self.backtest.increment_date()
+                self.increment_date()
 
                 if len(trade_handler.open_trades) > 0:
                     trade_handler.analyse_open_trades()
@@ -121,5 +111,34 @@ class BacktestController:
                 while time_taken < 3:
                     time_taken = dt.timedelta(seconds=(time.time() - start_time)).total_seconds()
                     time.sleep(0.3)
+        if self.state == "active":
+            logger.info("Backtest completed")
 
-        logger.info("Backtest completed.")
+        self.state = "inactive"
+
+
+class BacktestController:
+    def __init__(self, sio, tickers, properties):
+        self.socket = sio
+        self.tickers = tickers
+        self.backtest = None
+        self.properties = properties
+
+        @self.socket.on('playpause')
+        def toggle_pause(data):
+            self.backtest.is_paused = data['isPaused']
+
+        @self.socket.on('restartBacktest')
+        def restart_backtest():
+            self.backtest.state = "stopping"
+            while self.backtest.state is "stopping":
+                time.sleep(0.3)
+            self.backtest = None
+            logger.info("Backtest stopped")
+            self.start_backtest()
+
+        self.start_backtest()
+
+    def start_backtest(self):
+        self.backtest = Backtest(self.properties)
+        self.backtest.start_backtest(self.tickers)

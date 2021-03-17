@@ -60,10 +60,8 @@ if __name__ == '__main__':
     tickers = hist_data_mgr.get_tickers()
     # hist_data_mgr.threaded_data_download(tickers)
 
-    # Initialise backtest.
-    backtest = Backtest(start_balance=15000, start_date=start_date)
-    backtest_controller = BacktestController(backtest, tickers)
+    properties = {"start_balance": 15000, "start_date": start_date, "max_cap_pct_per_trade": 0.25, "tp_limit": 1.02,
+                  "sl_limit": 0.99}
 
-    # Start backtest.
-    backtest_controller.start_backtest(sio)
+    backtest_controller = BacktestController(sio, tickers, properties)
 
