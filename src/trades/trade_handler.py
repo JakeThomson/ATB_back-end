@@ -54,7 +54,7 @@ class TradeHandler:
         buy_price = interesting_df["close"].iloc[-1]
 
         # Work out the maximum amount of money the bot should spent on the order (a percentage of the total capital).
-        max_investment = self.backtest.total_balance * self.backtest.max_capital_pct_per_trade
+        max_investment = self.backtest.total_balance * self.backtest.max_cap_pct_per_trade
         # If the max investment is more than is available, then the max that can be invested is reduced to
         # what can be afforded.
         if max_investment > self.backtest.available_balance:
@@ -110,7 +110,8 @@ class TradeHandler:
         :param trade: A trade object holding all information on the opened trade.
         :return: none
         """
-        logger.debug(f"Buying {trade.share_qty} shares of {trade.ticker}.")
+        logger.debug(f"Buying {trade.share_qty} shares of {trade.ticker} for "
+                     f"{'£{:,.2f}'.format(trade.investment_total)}")
         self.backtest.available_balance -= trade.investment_total
         # Convert the object to allow it to be serialized correctly for storage within the MySQL database.
         json_trade = trade.to_JSON_serializable()
@@ -119,8 +120,6 @@ class TradeHandler:
         response = request_handler.post("/trades", json_trade)
         trade.trade_id = response.json().get("trade_id")
         request_handler.put("/backtest_properties", self.backtest.to_JSON_serializable())
-        logger.debug(f"Bought {trade.share_qty} shares in {trade.ticker} for "
-                     f"{'£{:,.2f}'.format(trade.investment_total)}")
         self.open_trades.append(trade)
 
     def close_trade(self, trade):
@@ -130,7 +129,7 @@ class TradeHandler:
         :return: none
         """
         logger.debug(f"Closing trade {trade.ticker} with {'profit' if trade.profit_loss > 0 else 'loss'} "
-                     f"of {trade.profit_loss}.")
+                     f"of {trade.profit_loss}")
         trade.sell_price = trade.current_price
         trade.sell_date = self.backtest.backtest_date
         self.backtest.available_balance += trade.sell_price * trade.share_qty

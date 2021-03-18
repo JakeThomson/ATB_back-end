@@ -14,3 +14,8 @@ pytest-cases==3.2.1
 tox==3.22.0
 requests-mock==1.8.0
 pytest-mock==3.5.1
+plotly==4.14.3
+bidict==0.21.2
+python-engineio==4.0.1
+python-socketio==5.1.0
+websocket-client==0.58.0
