@@ -12,13 +12,14 @@ max_attempts = 5
 retry_delay_seconds = 3
 
 
-def set_environment(environment):
+def set_environment(sio, environment):
     global URL
     if environment.lower() == "prod":
         URL = "https://trading-api.jake-t.codes"
     elif environment.lower() == "local":
         URL = "http://127.0.0.1:8080"
-    logger.info(f"Connecting to data access API on {URL}")
+    logger.info(f"Connecting to data access REST API and sockets on {URL}")
+    sio.connect(URL)
 
 
 def get(endpoint):

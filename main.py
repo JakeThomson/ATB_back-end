@@ -6,8 +6,10 @@ import sys
 import datetime as dt
 import socketio
 import logging as log
+import time
 import atexit
-import signal
+from signal import signal, SIGABRT, SIGBREAK, SIGILL, SIGINT, SIGSEGV, SIGTERM
+from threading import Thread
 
 # Set up socket connection with the data-access api and the logging configurations.
 sio = socketio.Client()
@@ -21,7 +23,7 @@ def connect():
 
 
 @sio.event
-def connect_error():
+def connect_error(e):
     """ Called when the socket connection has failed. """
     log.error("Failed to connect to socket")
 
@@ -30,29 +32,30 @@ def connect_error():
 def disconnect():
     """ Called when the socket connection has been terminated (when the backend is shutting down). """
     log.info("Socket disconnected")
-    log.info("Back-end shutting down")
 
 
 def handle_exit(signum, frame):
     """ Called when the application is manually stopped (CTRL+C, PyCharm 'STOP', etc.). """
+    thread = Thread(target=backtest_controller.stop_backtest)
+    thread.start()
+    thread.join()
+
     sio.disconnect()
-    exit()
+    log.info("Back-end shutting down")
+    sys.exit()
 
 
-# Listen for events that attempt to kill the program (CTRL+C, PyCharm 'STOP', etc.).
-atexit.register(handle_exit, None, None)
-signal.signal(signal.SIGTERM, handle_exit)
-signal.signal(signal.SIGINT, handle_exit)
+# Signal handlers listen for events that attempt to kill the program (CTRL+C, PyCharm 'STOP', etc.).
+for sig in (SIGABRT, SIGBREAK, SIGILL, SIGINT, SIGSEGV, SIGTERM):
+    signal(sig, handle_exit)
 
 
 # Main code
 if __name__ == '__main__':
 
-    sio.connect('http://localhost:8080')
-
     # Read command line argument to determine what environment URL to hit for the data access api.
     environment = str(sys.argv[1]) if len(sys.argv) == 2 else "prod"
-    request_handler.set_environment(environment)
+    request_handler.set_environment(sio, environment)
 
     # Download/update historical data.
     start_date = dt.datetime(2015, 1, 1)
@@ -65,3 +68,8 @@ if __name__ == '__main__':
 
     backtest_controller = BacktestController(sio, tickers, properties)
 
+    thread = Thread(target=backtest_controller.start_backtest)
+    thread.start()
+
+    while 1:  # Forces main thread to stay alive, so that the signal handler still exists.
+        time.sleep(1)

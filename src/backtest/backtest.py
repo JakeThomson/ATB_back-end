@@ -75,21 +75,25 @@ class Backtest:
         logger.info("*---------------------- Starting backtest ----------------------*")
         trade_handler = TradeHandler(self, tickers)
 
+        backtest_start_time = time.time()
         time.sleep(2)
 
         last_state = "executing"
         while self.backtest_date < (dt.datetime.today() - dt.timedelta(days=1)) and self.state == "active":
             if self.is_paused:
+                # Print the state of the application if it has changed since the last loop.
                 if last_state != "paused":
                     logger.info("Backtest has been paused")
                     last_state = "paused"
+                # Do not do anything if paused.
                 time.sleep(0.3)
             else:
+                # Print the state of the application if it has changed since the last loop.
                 if last_state != "executing":
                     logger.info("Backtest has been resumed")
                     last_state = "executing"
 
-                start_time = time.time()
+                loop_start_time = time.time()
                 self.increment_date()
 
                 if len(trade_handler.open_trades) > 0:
@@ -107,13 +111,15 @@ class Backtest:
                     logger.debug(e)
 
                 # Ensure loop is not executing too fast.
-                time_taken = dt.timedelta(seconds=(time.time() - start_time)).total_seconds()
-                while time_taken < 3:
-                    time_taken = dt.timedelta(seconds=(time.time() - start_time)).total_seconds()
+                loop_time_taken = dt.timedelta(seconds=(time.time() - loop_start_time)).total_seconds()
+                while loop_time_taken < 3:
+                    loop_time_taken = dt.timedelta(seconds=(time.time() - loop_start_time)).total_seconds()
                     time.sleep(0.3)
+        backtest_time_taken = dt.timedelta(seconds=(time.time() - backtest_start_time)).total_seconds()
         if self.state == "active":
-            logger.info("Backtest completed")
-
+            logger.info(f"Backtest completed in {str(dt.timedelta(seconds=backtest_time_taken))}")
+        else:
+            logger.info(f"Backtest stopped after {str(dt.timedelta(seconds=backtest_time_taken))}")
         self.state = "inactive"
 
 
@@ -126,19 +132,22 @@ class BacktestController:
 
         @self.socket.on('playpause')
         def toggle_pause(data):
+            # Toggle the pause state of the backtest.
             self.backtest.is_paused = data['isPaused']
 
         @self.socket.on('restartBacktest')
         def restart_backtest():
-            self.backtest.state = "stopping"
-            while self.backtest.state is "stopping":
-                time.sleep(0.3)
-            self.backtest = None
-            logger.info("Backtest stopped")
+            """ Stops the current backtest, removes it from self.backtest, and then starts a new backtest. """
+            self.stop_backtest()
             self.start_backtest()
 
-        self.start_backtest()
-
     def start_backtest(self):
+        """ Instantiates a new backtest object using the most recently updated properties, and then runs it. """
         self.backtest = Backtest(self.properties)
         self.backtest.start_backtest(self.tickers)
+
+    def stop_backtest(self):
+        self.backtest.state = "stopping"
+        while self.backtest.state == "stopping":
+            time.sleep(0.3)
+        self.backtest = None
