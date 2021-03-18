@@ -4,6 +4,7 @@ from src.trades.graph_composer import create_initial_profit_loss_figure
 from src.data_handlers import request_handler
 from src.data_validators import date_validator
 from src.trades.trade_handler import TradeHandler
+from threading import Thread
 import logging
 import time
 import copy
@@ -132,7 +133,7 @@ class BacktestController:
 
         @self.socket.on('playpause')
         def toggle_pause(data):
-            # Toggle the pause state of the backtest.
+            """ Toggle the pause state of the backtest. """
             self.backtest.is_paused = data['isPaused']
 
         @self.socket.on('restartBacktest')
@@ -140,6 +141,9 @@ class BacktestController:
             """ Stops the current backtest, removes it from self.backtest, and then starts a new backtest. """
             self.stop_backtest()
             self.start_backtest()
+
+        thread = Thread(target=self.start_backtest)
+        thread.start()
 
     def start_backtest(self):
         """ Instantiates a new backtest object using the most recently updated properties, and then runs it. """
