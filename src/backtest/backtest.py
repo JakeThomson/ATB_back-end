@@ -80,7 +80,7 @@ class Backtest:
         time.sleep(2)
 
         last_state = "executing"
-        while self.backtest_date < (dt.datetime.today() - dt.timedelta(days=1)) and self.state == "active":
+        while self.backtest_date < (dt.datetime(2015,1,10)) and self.state == "active":
             if self.is_paused:
                 # Print the state of the application if it has changed since the last loop.
                 if last_state != "paused":
@@ -122,6 +122,7 @@ class Backtest:
         else:
             logger.info(f"Backtest stopped after {str(dt.timedelta(seconds=backtest_time_taken))}")
         self.state = "inactive"
+        # del self
 
 
 class BacktestController:
@@ -151,7 +152,7 @@ class BacktestController:
         self.backtest.start_backtest(self.tickers)
 
     def stop_backtest(self):
-        self.backtest.state = "stopping"
+        self.backtest.state = "stopping" if self.backtest.state == "active" else "inactive"
         while self.backtest.state != "inactive":
             time.sleep(0.3)
         self.backtest = None
