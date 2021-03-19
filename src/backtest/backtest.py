@@ -4,6 +4,7 @@ from src.trades.graph_composer import create_initial_profit_loss_figure
 from src.data_handlers import request_handler
 from src.data_validators import date_validator
 from src.trades.trade_handler import TradeHandler
+from threading import Thread
 import logging
 import time
 import copy
@@ -112,7 +113,7 @@ class Backtest:
 
                 # Ensure loop is not executing too fast.
                 loop_time_taken = dt.timedelta(seconds=(time.time() - loop_start_time)).total_seconds()
-                while loop_time_taken < 3:
+                while loop_time_taken < 1.5:
                     loop_time_taken = dt.timedelta(seconds=(time.time() - loop_start_time)).total_seconds()
                     time.sleep(0.3)
         backtest_time_taken = dt.timedelta(seconds=(time.time() - backtest_start_time)).total_seconds()
@@ -121,6 +122,7 @@ class Backtest:
         else:
             logger.info(f"Backtest stopped after {str(dt.timedelta(seconds=backtest_time_taken))}")
         self.state = "inactive"
+        # del self
 
 
 class BacktestController:
@@ -132,7 +134,7 @@ class BacktestController:
 
         @self.socket.on('playpause')
         def toggle_pause(data):
-            # Toggle the pause state of the backtest.
+            """ Toggle the pause state of the backtest. """
             self.backtest.is_paused = data['isPaused']
 
         @self.socket.on('restartBacktest')
@@ -141,13 +143,16 @@ class BacktestController:
             self.stop_backtest()
             self.start_backtest()
 
+        thread = Thread(target=self.start_backtest)
+        thread.start()
+
     def start_backtest(self):
         """ Instantiates a new backtest object using the most recently updated properties, and then runs it. """
         self.backtest = Backtest(self.properties)
         self.backtest.start_backtest(self.tickers)
 
     def stop_backtest(self):
-        self.backtest.state = "stopping"
-        while self.backtest.state == "stopping":
+        self.backtest.state = "stopping" if self.backtest.state == "active" else "inactive"
+        while self.backtest.state != "inactive":
             time.sleep(0.3)
         self.backtest = None

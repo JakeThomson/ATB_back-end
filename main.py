@@ -20,6 +20,9 @@ config.logging_config()
 def connect():
     """ Called when the socket connection is first made. """
     log.info("Socket connected successfully")
+    time.sleep(1)
+    request_handler.patch("/backtest_properties/available", {"backtestOnline": 1})
+    time.sleep(1)
 
 
 @sio.event
@@ -40,18 +43,20 @@ def handle_exit(signum, frame):
     thread.start()
     thread.join()
 
+    request_handler.patch("/backtest_properties/available", {"backtestOnline": 0})
+    time.sleep(0.5)
     sio.disconnect()
     log.info("Back-end shutting down")
     sys.exit()
 
 
-# Signal handlers listen for events that attempt to kill the program (CTRL+C, PyCharm 'STOP', etc.).
-for sig in (SIGABRT, SIGBREAK, SIGILL, SIGINT, SIGSEGV, SIGTERM):
-    signal(sig, handle_exit)
-
-
 # Main code
 if __name__ == '__main__':
+
+    # Signal handlers listen for events that attempt to kill the program (CTRL+C, PyCharm 'STOP', etc.).
+    # You must have 'kill.windows.processes.softly' set to true in PyCharm registry.
+    for sig in (SIGABRT, SIGBREAK, SIGILL, SIGINT, SIGSEGV, SIGTERM):
+        signal(sig, handle_exit)
 
     # Read command line argument to determine what environment URL to hit for the data access api.
     environment = str(sys.argv[1]) if len(sys.argv) == 2 else "prod"
@@ -67,9 +72,6 @@ if __name__ == '__main__':
                   "sl_limit": 0.99}
 
     backtest_controller = BacktestController(sio, tickers, properties)
-
-    thread = Thread(target=backtest_controller.start_backtest)
-    thread.start()
 
     while 1:  # Forces main thread to stay alive, so that the signal handler still exists.
         time.sleep(1)
