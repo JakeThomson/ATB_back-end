@@ -113,7 +113,7 @@ class Backtest:
 
                 # Ensure loop is not executing too fast.
                 loop_time_taken = dt.timedelta(seconds=(time.time() - loop_start_time)).total_seconds()
-                while loop_time_taken < 3:
+                while loop_time_taken < 1.5:
                     loop_time_taken = dt.timedelta(seconds=(time.time() - loop_start_time)).total_seconds()
                     time.sleep(0.3)
         backtest_time_taken = dt.timedelta(seconds=(time.time() - backtest_start_time)).total_seconds()
@@ -152,6 +152,6 @@ class BacktestController:
 
     def stop_backtest(self):
         self.backtest.state = "stopping"
-        while self.backtest.state == "stopping":
+        while self.backtest.state != "inactive":
             time.sleep(0.3)
         self.backtest = None

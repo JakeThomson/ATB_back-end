@@ -21,7 +21,7 @@ def connect():
     """ Called when the socket connection is first made. """
     log.info("Socket connected successfully")
     time.sleep(1)
-    sio.emit("backtestAvailability", {"backtestOnline": True})
+    request_handler.patch("/backtest_properties/available", {"backtestOnline": 1})
     time.sleep(1)
 
 
@@ -43,7 +43,8 @@ def handle_exit(signum, frame):
     thread.start()
     thread.join()
 
-    sio.emit("backtestAvailability", {"backtestOnline": False})
+    request_handler.patch("/backtest_properties/available", {"backtestOnline": 0})
+    time.sleep(0.5)
     sio.disconnect()
     log.info("Back-end shutting down")
     sys.exit()
