@@ -19,6 +19,7 @@ def set_environment(sio, environment):
     elif environment.lower() == "local":
         URL = "http://127.0.0.1:8080"
     logger.info(f"Connecting to data access REST API and sockets on {URL}")
+    sio.connect(URL)
 
 
 def get(endpoint):

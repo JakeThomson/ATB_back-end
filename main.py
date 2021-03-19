@@ -61,7 +61,6 @@ if __name__ == '__main__':
     # Read command line argument to determine what environment URL to hit for the data access api.
     environment = str(sys.argv[1]) if len(sys.argv) == 2 else "prod"
     request_handler.set_environment(sio, environment)
-    sio.connect('http://127.0.0.1:8080')
 
     # Download/update historical data.
     start_date = dt.datetime(2015, 1, 1)

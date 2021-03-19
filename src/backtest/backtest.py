@@ -80,7 +80,7 @@ class Backtest:
         time.sleep(2)
 
         last_state = "executing"
-        while self.backtest_date < (dt.datetime(2015,1,10)) and self.state == "active":
+        while self.backtest_date < (dt.datetime.today() - dt.timedelta(days=1)) and self.state == "active":
             if self.is_paused:
                 # Print the state of the application if it has changed since the last loop.
                 if last_state != "paused":
