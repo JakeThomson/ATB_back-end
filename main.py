@@ -68,10 +68,7 @@ if __name__ == '__main__':
     tickers = hist_data_mgr.get_tickers()
     # hist_data_mgr.threaded_data_download(tickers)
 
-    properties = {"start_balance": 15000, "start_date": start_date, "max_cap_pct_per_trade": 0.25, "tp_limit": 1.02,
-                  "sl_limit": 0.99}
-
-    backtest_controller = BacktestController(sio, tickers, properties)
+    backtest_controller = BacktestController(sio, tickers)
 
     while 1:  # Forces main thread to stay alive, so that the signal handler still exists.
         time.sleep(1)

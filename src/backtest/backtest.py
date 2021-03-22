@@ -14,29 +14,30 @@ logger = logging.getLogger("backtest")
 
 class Backtest:
 
-    def __init__(self, properties):
+    def __init__(self, settings):
         """ Constructor class that instantiates the backtest object and simultaneously calls upon the backtest
             initialisation endpoint in the data access api.
 
         :param properties: a dict object holding all properties of the backtest.
         """
-        self.start_date = properties['start_date']
+        self.start_date = settings['startDate']
         self.backtest_date = self.start_date
-        self.start_balance = properties['start_balance']
+        self.start_balance = settings['startBalance']
         self.total_balance = self.start_balance
         self.available_balance = self.start_balance
         self.total_profit_loss = 0
         self.total_profit_loss_pct = 0
-        self.max_cap_pct_per_trade = properties['max_cap_pct_per_trade']
-        self.tp_limit = properties['tp_limit']
-        self.sl_limit = properties['sl_limit']
+        self.max_cap_pct_per_trade = settings['capPct']
+        self.tp_limit = settings['takeProfit']
+        self.sl_limit = settings['stopLoss']
+        self.market_index = settings['marketIndex']
         self.is_paused = request_handler.get("/backtest_properties/is_paused").json().get("isPaused")
         self.total_profit_loss_graph = create_initial_profit_loss_figure(self.start_date,
                                                                          self.start_balance)
         self.state = "active"
 
         body = {
-            "backtest_date": str(self.backtest_date),
+            "start_date": str(self.start_date),
             "start_balance": self.start_balance,
             "total_profit_loss_graph": self.total_profit_loss_graph
         }
@@ -126,11 +127,11 @@ class Backtest:
 
 
 class BacktestController:
-    def __init__(self, sio, tickers, properties):
+    def __init__(self, sio, tickers):
         self.socket = sio
         self.tickers = tickers
         self.backtest = None
-        self.properties = properties
+        self.settings = None
 
         @self.socket.on('playpause')
         def toggle_pause(data):
@@ -140,15 +141,17 @@ class BacktestController:
         @self.socket.on('restartBacktest')
         def restart_backtest():
             """ Stops the current backtest, removes it from self.backtest, and then starts a new backtest. """
+            self.get_settings()
             self.stop_backtest()
             self.start_backtest()
 
+        self.get_settings()
         thread = Thread(target=self.start_backtest)
         thread.start()
 
     def start_backtest(self):
         """ Instantiates a new backtest object using the most recently updated properties, and then runs it. """
-        self.backtest = Backtest(self.properties)
+        self.backtest = Backtest(self.settings)
         self.backtest.start_backtest(self.tickers)
 
     def stop_backtest(self):
@@ -156,3 +159,9 @@ class BacktestController:
         while self.backtest.state != "inactive":
             time.sleep(0.3)
         self.backtest = None
+
+    def get_settings(self):
+        settings = request_handler.get("/backtest_settings").json()
+        settings['startDate'] = dt.datetime.strptime(settings['startDate'], '%Y-%m-%dT%H:%M:%S.%fZ')
+        settings['endDate'] = dt.datetime.strptime(settings['endDate'], '%Y-%m-%dT%H:%M:%S.%fZ')
+        self.settings = settings
