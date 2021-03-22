@@ -21,6 +21,7 @@ class Backtest:
         :param properties: a dict object holding all properties of the backtest.
         """
         self.start_date = settings['startDate']
+        self.end_date = settings['endDate']
         self.backtest_date = self.start_date
         self.start_balance = settings['startBalance']
         self.total_balance = self.start_balance
@@ -48,6 +49,7 @@ class Backtest:
         backtest_dict = copy.deepcopy(self.__dict__)
         backtest_dict['backtest_date'] = str(backtest_dict["backtest_date"])
         backtest_dict['start_date'] = str(backtest_dict["start_date"])
+        backtest_dict['end_date'] = str(backtest_dict["end_date"])
         return backtest_dict
 
     def increment_date(self):
@@ -81,7 +83,7 @@ class Backtest:
         time.sleep(2)
 
         last_state = "executing"
-        while self.backtest_date < (dt.datetime.today() - dt.timedelta(days=1)) and self.state == "active":
+        while self.backtest_date < self.end_date and self.state == "active":
             if self.is_paused:
                 # Print the state of the application if it has changed since the last loop.
                 if last_state != "paused":
