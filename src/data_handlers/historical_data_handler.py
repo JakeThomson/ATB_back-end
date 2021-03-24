@@ -20,7 +20,7 @@ class HistoricalDataHandler:
 
     num_tickers = 0
 
-    def __init__(self, market_index="S&P500", max_threads=4, start_date=dt.datetime(2000, 1, 1),
+    def __init__(self, market_index="S&P500", max_threads=4, start_date=dt.datetime(2010, 1, 1),
                  end_date=(dt.datetime.today().replace(hour=0, minute=0, second=0, microsecond=0)
                            - dt.timedelta(days=1))):
         """ Constructor class that instantiates the historical data manager.
