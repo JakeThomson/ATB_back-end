@@ -3,9 +3,10 @@ from src.trades import graph_composer
 from src.exceptions.custom_exceptions import TradeCreationError, InvalidHistoricalDataIndexError, TradeAnalysisError
 from src.data_handlers import request_handler
 from src.trades.trade import Trade
-import random
+from src.strategy import strategy
 import math
 import logging
+import random
 
 logger = logging.getLogger("trade_handler")
 
@@ -16,6 +17,7 @@ class TradeHandler:
         self.hist_data_handler = HistoricalDataHandler(start_date=backtest.start_date)
         self.tickers = tickers
         self.open_trades = []
+        self.strategy = strategy.create_strategy()
 
     def analyse_historical_data(self):
         """ Goes through the list of tickers and performs technical analysis on each one, as defined in the trading
@@ -23,25 +25,33 @@ class TradeHandler:
 
         :return: A dataframe containing all information on the stock that has the most confidence from the analysis.
         """
-        # Currently there is no analysis, just a 60% chance of the bot choosing a random ticker from the list.
-        if random.random() < 0.6:
-            while True:
-                try:
-                    interesting_tickers = [random.choice(self.tickers)]
-                    interesting_stock = interesting_tickers[0]
+        interesting_tickers = []
+        for ticker in self.tickers:
+            try:
+                interesting_stock_df = \
+                    self.hist_data_handler.get_hist_dataframe(ticker, num_weeks=self.strategy.max_lookback_range_weeks,
+                                                              backtest_date=self.backtest.backtest_date)
+            except FileNotFoundError:
+                # The CSV file for the given ticker could not be found.
+                # logger.debug(f"CSV file for '{ticker}' could not be found, possibly has been "
+                #              f"recognised as invalid.")
+                continue
+            except InvalidHistoricalDataIndexError as e:
+                # The chosen stock does not have enough data covering the set period ahead of the current date.
+                # logger.debug(e)
+                continue
 
-                    interesting_stock_df = self.hist_data_handler.get_hist_dataframe(interesting_stock, num_weeks=16,
-                                                                                     backtest_date=self.backtest.backtest_date)
-                    return interesting_stock_df
-                except FileNotFoundError:
-                    logger.debug(f"CSV file for '{interesting_stock}' could not be found, possibly has been "
-                                 f"recognised as invalid. Choosing new ticker as 'interesting'")
-                except InvalidHistoricalDataIndexError as e:
-                    # The chosen stock does not have enough data covering the set period ahead of the current date.
-                    logger.debug(e)
-        else:
+            # Execute strategy on the ticker's past data.
+            interesting_ticker_df = self.strategy.execute(interesting_stock_df)
+            if not interesting_ticker_df.empty:
+                # If the ticker is flagged as interesting, append to interesting tickers array for further evaluation.
+                interesting_tickers.append(self.strategy.execute(interesting_ticker_df))
+
+        if not interesting_tickers:
             # No interesting stocks could be found for this date.
             raise TradeAnalysisError(self.backtest.backtest_date)
+
+        return random.choice(interesting_tickers)
 
     def calculate_num_shares_to_buy(self, interesting_df):
         """ Calculate the total number of shares the bot should buy in one order.
@@ -110,7 +120,7 @@ class TradeHandler:
         :param trade: A trade object holding all information on the opened trade.
         :return: none
         """
-        logger.debug(f"Buying {trade.share_qty} shares of {trade.ticker} for "
+        logger.info(f"Buying {trade.share_qty} shares of {trade.ticker} for "
                      f"{'£{:,.2f}'.format(trade.investment_total)}")
         self.backtest.available_balance -= trade.investment_total
         # Convert the object to allow it to be serialized correctly for storage within the MySQL database.
@@ -128,7 +138,7 @@ class TradeHandler:
         :param trade: The trade to be closed.
         :return: none
         """
-        logger.debug(f"Closing trade {trade.ticker} with {'profit' if trade.profit_loss > 0 else 'loss'} "
+        logger.info(f"Closing trade {trade.ticker} with {'profit' if trade.profit_loss > 0 else 'loss'} "
                      f"of {trade.profit_loss}")
         trade.sell_price = trade.current_price
         trade.sell_date = self.backtest.backtest_date
