@@ -1,13 +1,13 @@
 from src.data_handlers.historical_data_handler import HistoricalDataHandler
 from src.data_handlers import request_handler
-from src.backtest.backtest import Backtest, BacktestController
+from src.backtest.backtest import BacktestController
+import src.deadline_reminder as deadline_reminder
 import config
 import sys
 import datetime as dt
 import socketio
 import logging as log
 import time
-import atexit
 from signal import signal, SIGABRT, SIGBREAK, SIGILL, SIGINT, SIGSEGV, SIGTERM
 from threading import Thread
 
@@ -52,6 +52,8 @@ def handle_exit(signum, frame):
 
 # Main code
 if __name__ == '__main__':
+
+    deadline_reminder.print_deadline_reminder()
 
     # Signal handlers listen for events that attempt to kill the program (CTRL+C, PyCharm 'STOP', etc.).
     # You must have 'kill.windows.processes.softly' set to true in PyCharm registry.

@@ -17,7 +17,6 @@ import time
 
 
 class HistoricalDataHandler:
-
     num_tickers = 0
 
     def __init__(self, market_index="S&P500", max_threads=4, start_date=dt.datetime(2010, 1, 1),
@@ -147,9 +146,9 @@ class HistoricalDataHandler:
         for ticker in slice_of_tickers:
             file_name = f"{ticker}.csv"
 
-            if not os.path.exists(self.file_path+file_name):
+            if not os.path.exists(self.file_path + file_name):
                 # Check to see if CSV has been placed in the invalid folder previously.
-                if os.path.exists(self.invalid_file_path+file_name):
+                if os.path.exists(self.invalid_file_path + file_name):
                     log.warning(f"{ticker} has previously been identified as invalid, skipping")
                     continue
 
@@ -167,9 +166,9 @@ class HistoricalDataHandler:
                 # Validate data, and save as CSV to the appropriate locations.
                 valid = HistoricalDataValidator(historical_df).validate_data()
                 if valid:
-                    historical_df.to_csv(self.file_path+file_name, mode="a")
+                    historical_df.to_csv(self.file_path + file_name, mode="a")
                 else:
-                    historical_df.to_csv(self.invalid_file_path+file_name, mode="a")
+                    historical_df.to_csv(self.invalid_file_path + file_name, mode="a")
             # If CSV already exists, check to see if it has data up until self.end_date.
             else:
                 up_to_date, last_date_in_csv = self.csv_up_to_date(ticker)
@@ -192,11 +191,11 @@ class HistoricalDataHandler:
                     # Validate data, and append new data onto existing CSVs.
                     valid = HistoricalDataValidator(historical_df).validate_data()
                     if valid:
-                        historical_df.to_csv(self.file_path+file_name, mode="a", header=False)
+                        historical_df.to_csv(self.file_path + file_name, mode="a", header=False)
                     else:
                         # If invalid, move the original 'valid' file before appending onto it.
-                        os.rename(self.file_path+file_name, self.invalid_file_path+file_name)
-                        historical_df.to_csv(self.invalid_file_path+file_name, mode="a", header=False)
+                        os.rename(self.file_path + file_name, self.invalid_file_path + file_name)
+                        historical_df.to_csv(self.invalid_file_path + file_name, mode="a", header=False)
 
     def threaded_data_download(self, tickers):
         """ Downloads historical data using multiple threads, max threads are set in the class attributes.
@@ -228,21 +227,21 @@ class HistoricalDataHandler:
         log.info(f"Historical data checks completed in: {total_time}")
 
 
-def split_list(tickers, num_portions, portion_id):
+def split_list(li, num_portions, portion_id):
     """ Splits a list into equal sections, returns the portion of the list needed by that thread.
 
-    :param tickers: A list of company tickers.
+    :param li: The list to be equally split.
     :param num_portions: The total number of portions to split the list between.
     :param portion_id: The portion of the split to be returned.
     :return: The required section of a list.
     """
 
-    section = math.floor(len(tickers) / num_portions)
+    section = math.floor(len(li) / num_portions)
     beginning_index = section * portion_id
     if portion_id + 1 < num_portions:
         end_index = beginning_index + section - 1
     else:
-        end_index = len(tickers) - 1
+        end_index = len(li) - 1
     log.debug(
         f"Thread-{portion_id} handling {end_index - beginning_index + 1} tickers ({beginning_index}-{end_index})")
-    return tickers[beginning_index:(end_index + 1)]
+    return li[beginning_index:(end_index + 1)]

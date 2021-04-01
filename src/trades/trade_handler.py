@@ -33,12 +33,9 @@ class TradeHandler:
                                                               backtest_date=self.backtest.backtest_date)
             except FileNotFoundError:
                 # The CSV file for the given ticker could not be found.
-                # logger.debug(f"CSV file for '{ticker}' could not be found, possibly has been "
-                #              f"recognised as invalid.")
                 continue
             except InvalidHistoricalDataIndexError as e:
                 # The chosen stock does not have enough data covering the set period ahead of the current date.
-                # logger.debug(e)
                 continue
 
             # Execute strategy on the ticker's past data.
