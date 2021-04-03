@@ -23,7 +23,7 @@ class Trade:
         trade_dict = copy.deepcopy(self.__dict__)
         trade_dict['buy_date'] = str(trade_dict["buy_date"])
         trade_dict['sell_date'] = str(trade_dict["sell_date"])
-        trade_dict['historical_data'].index = trade_dict['historical_data'].index.strftime('%Y-%m-%d').copy()
+        trade_dict['historical_data'].date = trade_dict['historical_data'].date.strftime('%Y-%m-%d').copy()
         trade_dict['historical_data'].reset_index(level="Date", inplace=True)
         trade_dict['historical_data'] = trade_dict['historical_data'].to_dict(orient="list")
         return trade_dict

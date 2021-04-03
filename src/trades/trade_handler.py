@@ -33,9 +33,6 @@ class TradeHandler:
                     interesting_stock_df = self.hist_data_handler.get_hist_dataframe(interesting_stock, num_weeks=16,
                                                                                      backtest_date=self.backtest.backtest_date)
                     return interesting_stock_df
-                except FileNotFoundError:
-                    logger.debug(f"CSV file for '{interesting_stock}' could not be found, possibly has been "
-                                 f"recognised as invalid. Choosing new ticker as 'interesting'")
                 except InvalidHistoricalDataIndexError as e:
                     # The chosen stock does not have enough data covering the set period ahead of the current date.
                     logger.debug(e)
@@ -153,7 +150,7 @@ class TradeHandler:
         json_open_trades_array = []
         json_closed_trades_array = []
         for i, trade in enumerate(self.open_trades):
-            # Get the respective day's data for the targeted trade from the downloaded CSVs and append to historical
+            # Get the respective day's data for the targeted trade from the SQLite tables and append to historical
             # data, trimming off the first column to keep the dataframe short.
             new_data = self.hist_data_handler.get_hist_dataframe(trade.ticker, self.backtest.backtest_date, num_weeks=0)
             trade.historical_data = trade.historical_data[1:].append(new_data)
