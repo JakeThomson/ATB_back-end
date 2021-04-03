@@ -14,6 +14,7 @@ from threading import Thread
 # Set up socket connection with the data-access api and the logging configurations.
 sio = socketio.Client()
 config.logging_config()
+backtest_controller = None
 
 
 @sio.event
@@ -39,9 +40,10 @@ def disconnect():
 
 def handle_exit(signum, frame):
     """ Called when the application is manually stopped (CTRL+C, PyCharm 'STOP', etc.). """
-    thread = Thread(target=backtest_controller.stop_backtest)
-    thread.start()
-    thread.join()
+    if backtest_controller is not None:
+        thread = Thread(target=backtest_controller.stop_backtest)
+        thread.start()
+        thread.join()
 
     request_handler.patch("/backtest_properties/available", {"backtestOnline": 0})
     time.sleep(0.5)
@@ -65,10 +67,10 @@ if __name__ == '__main__':
     request_handler.set_environment(sio, environment)
 
     # Download/update historical data.
-    start_date = dt.datetime(2015, 1, 1)
-    hist_data_mgr = HistoricalDataHandler(start_date=start_date, market_index="S&P500", max_threads=7)
+    start_date = dt.datetime(2009, 1, 1)
+    hist_data_mgr = HistoricalDataHandler(start_date=start_date, market_index="S&P500", max_processes=7)
     tickers = hist_data_mgr.get_tickers()
-    # hist_data_mgr.threaded_data_download(tickers)
+    hist_data_mgr.multiprocess_data_download(tickers)
 
     backtest_controller = BacktestController(sio, tickers)
 

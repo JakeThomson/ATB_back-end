@@ -1,6 +1,7 @@
-import holidays
 import datetime as dt
-import logging as log
+import sys
+sys.path.append("../")
+import pandas_market_calendars as mcal
 
 
 def is_weekend_check(date):
@@ -21,10 +22,10 @@ def is_holiday_check(date):
     :param date: Datetime object to be checked.
     :return: True if date is a holiday, False if not
     """
-    us_holidays = holidays.UnitedStates()
-    date_str = dt.datetime.strftime(date, "%Y-%m-%d")
+    nyse = mcal.get_calendar('NYSE')
+    us_holidays = nyse.holidays().holidays
 
-    if date_str in us_holidays:
+    if date.date() in us_holidays:
         return True
     else:
         return False

@@ -66,18 +66,18 @@ def test_get_tickers_updates_ticker_list_cache_file(requests_mock):
 
 
 @pytest.mark.historical_data_handler
-def test_historical_data_handler_download_to_csv(mocker):
-    # Test set up: Create mocks for all function calls within download_historical_data_to_csv
+def test_historical_data_handler_download_to_sqlite(mocker):
+    # Test set up: Create mocks for all function calls within download_historical_data_to_sqlite
     test_dataframe = pd.read_csv(f"data_handlers/test_data/historical_data/test_historical_data_1.csv")
     test_dataframe["Date"] = pd.to_datetime(test_dataframe["Date"])
     test_dataframe = test_dataframe.set_index("Date")
     mocker.patch("pandas_datareader.DataReader", return_value=test_dataframe)
-    mocker.patch("src.data_handlers.historical_data_handler.HistoricalDataHandler.csv_up_to_date", return_value=True)
+    mocker.patch("src.data_handlers.historical_data_handler.HistoricalDataHandler.sqlite_table_up_to_date", return_value=True)
     mocker.patch("src.data_validators.historical_data_validator.HistoricalDataValidator.validate_data", return_value=True)
     mocker.patch("src.data_handlers.historical_data_handler.split_list", return_value=["TEST1"])
     test_tickers = ['TEST1', 'TEST2', 'TEST3']
 
-    hist_data_mgr.download_historical_data_to_csv(test_tickers, 0)
+    hist_data_mgr.download_historical_data_to_sqlite(test_tickers, 0)
 
     result_dataframe = pd.read_csv(f"{hist_data_mgr.file_path}TEST1.csv")
     result_dataframe["Date"] = pd.to_datetime(result_dataframe["Date"])
@@ -89,7 +89,7 @@ def test_historical_data_handler_download_to_csv(mocker):
 
 @pytest.mark.historical_data_handler
 def test_hist_data_detects_outdated_csv():
-    result, last_date_in_csv = hist_data_mgr.csv_up_to_date("TEST1")
+    result, last_date_in_csv = hist_data_mgr.sqlite_table_up_to_date("TEST1")
 
     assert result is False
 
@@ -105,13 +105,13 @@ def test_hist_data_handler_updates_existing_csv(mocker):
     mocker.patch("pandas_datareader.DataReader", return_value=test_dataframe)
 
     last_date_in_test_csv = dt.datetime(year=2021, month=2, day=24)
-    mocker.patch("src.data_handlers.historical_data_handler.HistoricalDataHandler.csv_up_to_date",
+    mocker.patch("src.data_handlers.historical_data_handler.HistoricalDataHandler.sqlite_table_up_to_date",
                  return_value={False, last_date_in_test_csv})
 
     mocker.patch("src.data_validators.historical_data_validator.HistoricalDataValidator.validate_data", return_value=True)
     test_tickers = ['TEST1', 'TEST2', 'TEST3']
 
-    hist_data_mgr.download_historical_data_to_csv(test_tickers, 0)
+    hist_data_mgr.download_historical_data_to_sqlite(test_tickers, 0)
 
     # Assert that the updated CSV is the same as the expected.
     expected_dataframe = pd.read_csv(f"data_handlers/test_data/historical_data/test_historical_data_combined.csv")

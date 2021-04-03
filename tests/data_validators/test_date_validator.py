@@ -1,11 +1,12 @@
 import pytest
 import pandas as pd
+import datetime as dt
 from pytest_cases import parametrize, parametrize_with_cases
 from src.data_validators import date_validator
 
 
 class DateCases:
-    """ Loads up the cases from the CSV and provides each row as a test case for each test. """
+    """ Loads up the cases from the SQLite table and provides each row as a test case for each test. """
 
     cases = pd.read_csv('data_validators/cases/date_validator_cases.csv')
     cases['date'] = pd.to_datetime(cases['date'])
