@@ -101,8 +101,7 @@ class HistoricalDataHandler:
     def get_hist_dataframe(self, ticker, backtest_date, num_weeks=12, num_days=0):
         conn = sqlite3.connect('historical_data/historical_data.db')
         c = conn.cursor()
-        buffer_date = date_validator.validate_date((dt.datetime(2015, 1, 3) - dt.timedelta(weeks=num_weeks,
-                                                                                           days=num_days)), -1)
+        buffer_date = date_validator.validate_date((backtest_date - dt.timedelta(weeks=num_weeks, days=num_days)), -1)
 
         first_date = c.execute(f"""SELECT first_date FROM available_tickers WHERE ticker=? """, [ticker]).fetchone()[0]
         first_date = dt.datetime.strptime(first_date, '%Y-%m-%d %H:%M:%S')
@@ -110,7 +109,9 @@ class HistoricalDataHandler:
             raise InvalidHistoricalDataIndexError(ticker, buffer_date, first_date)
 
         historical_df = pd.read_sql_query(
-            f"""SELECT * FROM {ticker} WHERE `date` >= ? AND `date` <= ?""", conn, params=[buffer_date, backtest_date])
+            f"""SELECT * FROM {ticker} WHERE `date` >= ? AND `date` <= ?""", conn, params=[buffer_date, backtest_date],
+            index_col='date', parse_dates=['date'])
+
         historical_df.ticker = ticker
 
         return historical_df

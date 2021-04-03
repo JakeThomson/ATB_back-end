@@ -152,9 +152,9 @@ class TradeHandler:
         for i, trade in enumerate(self.open_trades):
             # Get the respective day's data for the targeted trade from the SQLite tables and append to historical
             # data, trimming off the first column to keep the dataframe short.
-            new_data = self.hist_data_handler.get_hist_dataframe(trade.ticker, self.backtest.backtest_date, num_weeks=0)
+            new_data = self.hist_data_handler.get_hist_dataframe(trade.ticker, self.backtest.backtest_date, num_weeks=0, num_days=1)
             trade.historical_data = trade.historical_data[1:].append(new_data)
-            trade.current_price = trade.historical_data['close'][-1]
+            trade.current_price = trade.historical_data['close'].iloc[-1]
             trade.profit_loss = (trade.current_price * trade.share_qty) - trade.investment_total
             trade.profit_loss_pct = (trade.profit_loss / trade.investment_total) * 100
             trade.figure, trade.figure_pct = graph_composer.draw_open_trade_figure(trade)
