@@ -6,10 +6,10 @@ class InvalidMarketIndexError(Exception):
 
 
 class InvalidHistoricalDataIndexError(Exception):
-    """ Exception raised when a start date index value is a date that comes before the very first entry in a CSV."""
-    def __init__(self, ticker, start_date_index, first_date_index_in_csv):
+    """ Exception raised when a start date index value is a date that comes before the very first entry in a table."""
+    def __init__(self, ticker, start_date_index, first_date_index_in_table):
         self.message = f"{start_date_index} comes before the very first date in the downloaded data " \
-                       f"for {ticker} ({first_date_index_in_csv})."
+                       f"for {ticker} ({first_date_index_in_table})."
         super().__init__(self.message)
 
 
