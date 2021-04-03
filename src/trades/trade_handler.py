@@ -33,9 +33,6 @@ class TradeHandler:
                     interesting_stock_df = self.hist_data_handler.get_hist_dataframe(interesting_stock, num_weeks=16,
                                                                                      backtest_date=self.backtest.backtest_date)
                     return interesting_stock_df
-                except FileNotFoundError:
-                    logger.debug(f"CSV file for '{interesting_stock}' could not be found, possibly has been "
-                                 f"recognised as invalid. Choosing new ticker as 'interesting'")
                 except InvalidHistoricalDataIndexError as e:
                     # The chosen stock does not have enough data covering the set period ahead of the current date.
                     logger.debug(e)
@@ -153,11 +150,11 @@ class TradeHandler:
         json_open_trades_array = []
         json_closed_trades_array = []
         for i, trade in enumerate(self.open_trades):
-            # Get the respective day's data for the targeted trade from the downloaded CSVs and append to historical
+            # Get the respective day's data for the targeted trade from the SQLite tables and append to historical
             # data, trimming off the first column to keep the dataframe short.
-            new_data = self.hist_data_handler.get_hist_dataframe(trade.ticker, self.backtest.backtest_date, num_weeks=0)
+            new_data = self.hist_data_handler.get_hist_dataframe(trade.ticker, self.backtest.backtest_date, num_weeks=0, num_days=1)
             trade.historical_data = trade.historical_data[1:].append(new_data)
-            trade.current_price = trade.historical_data['close'][-1]
+            trade.current_price = trade.historical_data['close'].iloc[-1]
             trade.profit_loss = (trade.current_price * trade.share_qty) - trade.investment_total
             trade.profit_loss_pct = (trade.profit_loss / trade.investment_total) * 100
             trade.figure, trade.figure_pct = graph_composer.draw_open_trade_figure(trade)

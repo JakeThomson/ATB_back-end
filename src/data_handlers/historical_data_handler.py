@@ -3,7 +3,6 @@ from src.data_validators import date_validator
 from src.exceptions.custom_exceptions import InvalidMarketIndexError, InvalidHistoricalDataIndexError
 
 import math
-import threading
 import datetime as dt
 import pandas as pd
 import pandas_datareader as web
@@ -14,25 +13,26 @@ import os
 import re
 import pickle
 import time
+import multiprocessing
+import sqlite3
 
 
 class HistoricalDataHandler:
-
     num_tickers = 0
 
-    def __init__(self, market_index="S&P500", max_threads=4, start_date=dt.datetime(2000, 1, 1),
+    def __init__(self, market_index="S&P500", max_processes=4, start_date=dt.datetime(2000, 1, 1),
                  end_date=(dt.datetime.today().replace(hour=0, minute=0, second=0, microsecond=0)
                            - dt.timedelta(days=1))):
         """ Constructor class that instantiates the historical data manager.
 
         :param market_index: Label for the market index to be used in the backtest.
             Currently supported index labels: 'S&P500'.
-        :param max_threads: The max number of threads to be used to download data.
+        :param max_processes: The max number of processes to be used to download data.
         :param start_date: The date to download data from.
         :param end_date: The date to download data up to (Default is yesterday).
         """
         self.market_index = market_index
-        self.max_threads = max_threads
+        self.max_processes = max_processes
         self.start_date = date_validator.validate_date(start_date, 1)
         self.end_date = date_validator.validate_date(end_date, -1)
         self.file_path = f"historical_data/{self.market_index}/"
@@ -70,7 +70,7 @@ class HistoricalDataHandler:
                         return tickers
                     # Remove cache file if it is not up to date, and proceed to re-download from Wikipedia.
                     else:
-                        log.debug(f"Updating cache file for market index '{self.market_index}'")
+                        log.info(f"Updating cache file for market index '{self.market_index}'")
                         os.remove(self.market_index_file_path + filename)
 
             # Scrape list of S&P500 companies from Wikipedia.
@@ -99,83 +99,99 @@ class HistoricalDataHandler:
         return tickers
 
     def get_hist_dataframe(self, ticker, backtest_date, num_weeks=12, num_days=0):
-        historical_df = pd.read_csv(f"{self.file_path}{ticker}.csv")
-        historical_df["Date"] = pd.to_datetime(historical_df["Date"])
-        historical_df = historical_df.set_index("Date")
-
-        # Only get the 12 weeks of data before the backtest_date.
+        conn = sqlite3.connect('historical_data/historical_data.db')
+        c = conn.cursor()
         buffer_date = date_validator.validate_date((backtest_date - dt.timedelta(weeks=num_weeks, days=num_days)), -1)
 
-        first_date_in_csv = historical_df.index[0]
-        if buffer_date <= first_date_in_csv:
-            raise InvalidHistoricalDataIndexError(ticker, buffer_date, first_date_in_csv)
+        first_date = c.execute(f"""SELECT first_date FROM available_tickers WHERE ticker=? """, [ticker]).fetchone()[0]
+        first_date = dt.datetime.strptime(first_date, '%Y-%m-%d %H:%M:%S')
+        if buffer_date <= first_date:
+            raise InvalidHistoricalDataIndexError(ticker, buffer_date, first_date)
 
-        historical_df = historical_df[buffer_date:backtest_date]
+        historical_df = pd.read_sql_query(
+            f"""SELECT * FROM {ticker} WHERE `date` >= ? AND `date` <= ?""", conn, params=[buffer_date, backtest_date],
+            index_col='date', parse_dates=['date'])
+
         historical_df.ticker = ticker
 
         return historical_df
 
-    def csv_up_to_date(self, ticker):
-        """ Opens the ticker's CSV file and checks to see if the data runs up to the date set in self.start_date,
+    def sqlite_table_up_to_date(self, ticker):
+        """ Opens the ticker's SQLite table  and checks to see if the data runs up to the date set in self.start_date,
             which is yesterday by default due to that being guaranteed to be the last full day of data.
 
         :param ticker: A string containing a company ticker
-        :return: True if CSV covers the dates, False if not.
+        :return: True if table data covers the dates, False if not.
         """
         # Load the ticker data, look at the last index and compare the date to self.end_date.
-        historical_df = pd.read_csv(f"{self.file_path}{ticker}.csv")
-        last_date = historical_df.iloc[historical_df.last_valid_index(), 0]
-        last_date = dt.datetime.strptime(last_date, "%Y-%m-%d")
+        conn = sqlite3.connect('historical_data/historical_data.db')
+        c = conn.cursor()
+
+        last_date = c.execute(f"""SELECT last_date FROM available_tickers WHERE ticker=? """, [ticker]).fetchone()[0]
+        last_date = dt.datetime.strptime(last_date, '%Y-%m-%d %H:%M:%S')
+
+        conn.close()
 
         if last_date.date() < self.end_date.date():
             return False, last_date
         else:
             return True, None
 
-    def download_historical_data_to_csv(self, tickers, thread_id):
+    def download_historical_data_to_sqlite(self, tickers, process_id):
         """ Gets historical data from Yahoo using a slice of the tickers provided in the tickers list.
 
         :param tickers: A list of company tickers.
-        :param thread_id: The ID of the thread that called this function.
+        :param process_id: The ID of the process that called this function.
         :return: none
         """
 
-        # Get a portion of tickers for this thread to work with.
-        slice_of_tickers = split_list(tickers, self.max_threads, thread_id)
+        # Get a portion of tickers for this process to work with.
+        slice_of_tickers = split_list(tickers, self.max_processes, process_id)
 
-        # Iterate through ticker list and download historical data into a CSV if it does not already exist.
+        # Iterate through ticker list and download historical data into a sqlite table if it does not already exist.
         for ticker in slice_of_tickers:
-            file_name = f"{ticker}.csv"
 
-            if not os.path.exists(self.file_path+file_name):
-                # Check to see if CSV has been placed in the invalid folder previously.
-                if os.path.exists(self.invalid_file_path+file_name):
-                    log.warning(f"{ticker} has previously been identified as invalid, skipping")
-                    continue
+            conn = sqlite3.connect('historical_data/historical_data.db')
+            c = conn.cursor()
 
+            # Get the count of tables with the name == ticker.
+            c.execute(''' SELECT count(name) FROM sqlite_master WHERE type='table' AND name=? ''', [ticker])
+
+            # If the count is 0, then table does not exist.
+            if c.fetchone()[0] == 0:
+
+                tables_count = c.execute("""SELECT count(*) FROM available_tickers""").fetchone()[0]
                 percentage = \
-                    round(len(os.listdir(self.file_path)) / self.num_tickers * 100, 2)
-                progress = f"{len(os.listdir(self.file_path))}/{self.num_tickers} - {percentage}%"
+                    round(tables_count / self.num_tickers * 100, 2)
+                progress = f"{tables_count}/{self.num_tickers} - {percentage}%"
 
                 # Download data from Yahoo finance using pandas_datareader.
                 log.debug(f"Saving {(ticker + ' data').ljust(13)} ({progress})")
                 historical_df = web.DataReader(ticker, "yahoo", self.start_date, self.end_date)
-                historical_df = historical_df.reindex(columns=["Open", "High", "Low", "Close", "Volume", "Adj Close"])
-                historical_df.columns = ["open", "high", "low", "close", "volume", "adj close"]
-                historical_df.ticker = ticker
+                historical_df = historical_df.reset_index().reindex(
+                    columns=["Date", "Open", "High", "Low", "Close", "Volume", "Adj Close"])
+                historical_df.columns = ["date", "open", "high", "low", "close", "volume", "adj_close"]
 
-                # Validate data, and save as CSV to the appropriate locations.
+                # Validate data, and save into a SQLite table.
                 valid = HistoricalDataValidator(historical_df).validate_data()
-                if valid:
-                    historical_df.to_csv(self.file_path+file_name, mode="a")
-                else:
-                    historical_df.to_csv(self.invalid_file_path+file_name, mode="a")
-            # If CSV already exists, check to see if it has data up until self.end_date.
+                last_date = dt.datetime.strftime(historical_df.iloc[-1]['date'], "%Y-%m-%d %H:%M:%S")
+                first_date = dt.datetime.strftime(historical_df.iloc[0]['date'], "%Y-%m-%d %H:%M:%S")
+                historical_df.to_sql(ticker, conn, if_exists='replace', index=False)
+                c.execute(f'''INSERT INTO available_tickers (ticker, valid, market_index, first_date, last_date) 
+                                    VALUES (?, ?, ?, ?, ?)''', [ticker, valid, self.market_index, first_date, last_date])
+                conn.commit()
+            # If table already exists in SQLite DB, check to see if it has data up until self.end_date.
             else:
-                up_to_date, last_date_in_csv = self.csv_up_to_date(ticker)
+                # Check to see if the dataset has been marked as invalid.
+                valid = c.execute('''SELECT valid FROM available_tickers WHERE ticker=?''', [ticker]).fetchone()[0]
+                if not valid:
+                    log.warning(f"{ticker} has previously been identified as invalid, skipping")
+                    continue
+                up_to_date, last_date_in_table = self.sqlite_table_up_to_date(ticker)
                 if not up_to_date:
                     # If not up to date, then download the missing data.
-                    download_from_date = last_date_in_csv + dt.timedelta(days=1)
+                    download_from_date = last_date_in_table + dt.timedelta(days=1)
+                    download_from_date = date_validator.validate_date(download_from_date)
                     log.debug(f"Updating {ticker} data")
                     historical_df = web.DataReader(ticker, "yahoo", download_from_date, self.end_date)
                     try:
@@ -184,29 +200,43 @@ class HistoricalDataHandler:
                     except IndexError:
                         # There is only one line
                         pass
-                    historical_df = historical_df.reindex(
-                        columns=["Open", "High", "Low", "Close", "Volume", "Adj Close"])
-                    historical_df.columns = ["open", "high", "low", "close", "volume", "adj close"]
-                    historical_df.ticker = ticker
+                    historical_df = historical_df.reset_index().reindex(
+                        columns=["Date", "Open", "High", "Low", "Close", "Volume", "Adj Close"])
+                    historical_df.columns = ["date", "open", "high", "low", "close", "volume", "adj_close"]
 
-                    # Validate data, and append new data onto existing CSVs.
+                    # Validate data, and append to an existing SQLite table.
                     valid = HistoricalDataValidator(historical_df).validate_data()
-                    if valid:
-                        historical_df.to_csv(self.file_path+file_name, mode="a", header=False)
-                    else:
-                        # If invalid, move the original 'valid' file before appending onto it.
-                        os.rename(self.file_path+file_name, self.invalid_file_path+file_name)
-                        historical_df.to_csv(self.invalid_file_path+file_name, mode="a", header=False)
+                    historical_df.to_sql(ticker, conn, if_exists='append', index=False)
+                    c.execute("""UPDATE available_tickers
+                                                    SET valid=?
+                                                        WHERE ticker=? """, [valid, ticker])
+                    conn.commit()
+            conn.close()
 
-    def threaded_data_download(self, tickers):
-        """ Downloads historical data using multiple threads, max threads are set in the class attributes.
+    def multiprocess_data_download(self, tickers):
+        """ Downloads historical data using multiple processes, max processes are set in the class attributes.
 
         :param tickers: A list of company tickers.
         :return: none
         """
+        conn = sqlite3.connect('historical_data/historical_data.db')
+        c = conn.cursor()
+        # Get the count of tables with the name == ticker
+        exists = \
+            c.execute(
+                '''SELECT count(name) FROM sqlite_master WHERE type='table' AND name='available_tickers' ''') \
+                .fetchone()[0]
+        # If the count is 1, then table exists
+        if not exists:
+            # Create table in SQLite DB for the ticker.
+            c.execute(f'''CREATE TABLE available_tickers
+                             ([ticker] text, [valid] boolean, [market_index] text, [first_date] datetime, 
+                              [last_date] datetime)''')
+        conn.commit()
+        conn.close()
 
-        log.info("Saving/updating ticker historical data to CSVs")
-        download_threads = []
+        log.info("Saving/updating ticker historical data to local database.")
+        download_processes = []
         start_time = time.time()
 
         if not os.path.exists(self.file_path):
@@ -214,22 +244,22 @@ class HistoricalDataHandler:
         if not os.path.exists(self.invalid_file_path):
             os.makedirs(self.invalid_file_path)
 
-        # Create a number of threads to download data concurrently, to speed up the process.
-        for thread_id in range(0, self.max_threads):
-            download_thread = threading.Thread(target=self.download_historical_data_to_csv,
-                                               args=(tickers, thread_id))
-            download_threads.append(download_thread)
-            download_thread.start()
+        # Create a number of processes to download data concurrently, to speed up the process.
+        for process_id in range(0, self.max_processes):
+            download_process = multiprocessing.Process(target=self.download_historical_data_to_sqlite,
+                                                      args=(tickers, process_id))
+            download_processes.append(download_process)
+            download_process.start()
 
-        # Wait for all threads to finish downloading data before continuing.
-        for download_thread in download_threads:
-            download_thread.join()
+        # Wait for all processes to finish downloading data before continuing.
+        for download_process in download_processes:
+            download_process.join()
         total_time = dt.timedelta(seconds=(time.time() - start_time))
         log.info(f"Historical data checks completed in: {total_time}")
 
 
 def split_list(tickers, num_portions, portion_id):
-    """ Splits a list into equal sections, returns the portion of the list needed by that thread.
+    """ Splits a list into equal sections, returns the portion of the list needed by that process/thread.
 
     :param tickers: A list of company tickers.
     :param num_portions: The total number of portions to split the list between.
@@ -243,6 +273,4 @@ def split_list(tickers, num_portions, portion_id):
         end_index = beginning_index + section - 1
     else:
         end_index = len(tickers) - 1
-    log.debug(
-        f"Thread-{portion_id} handling {end_index - beginning_index + 1} tickers ({beginning_index}-{end_index})")
     return tickers[beginning_index:(end_index + 1)]
