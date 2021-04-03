@@ -60,7 +60,7 @@ class Backtest:
         next_date = self.backtest_date + dt.timedelta(days=1)
         self.backtest_date = date_validator.validate_date(next_date, 1)
 
-        logger.info(f"BACKTEST DATE: {dt.datetime.strftime(self.backtest_date, '%Y-%m-%d')}")
+        logger.info(f"---- BACKTEST DATE: {dt.datetime.strftime(self.backtest_date, '%Y-%m-%d')} ----")
 
         body = {
             "backtest_date": self.backtest_date

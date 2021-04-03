@@ -10,8 +10,12 @@ def print_deadline_reminder():
 
     project_start_date = dt.datetime(2021, 2, 2)
     report_start_date = dt.datetime(2021, 4, 1)
-    end_of_current_date = dt.datetime.combine(dt.date.today(), dt.datetime.min.time()) + dt.timedelta(days=1, hours=2)
     current_date = dt.datetime.today()
+    if current_date.hour >= 2:
+        end_of_current_date = dt.datetime.combine(dt.date.today(), dt.datetime.min.time()) + dt.timedelta(days=1)
+    else:
+        end_of_current_date = dt.datetime.combine(dt.date.today(), dt.datetime.min.time())
+
     deadline = dt.datetime(2021, 5, 3)
     word_limit = 10500
     try:

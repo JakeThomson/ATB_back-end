@@ -9,9 +9,8 @@ class MovingAverages(BaseTechnicalAnalysisComponent):
         self.config = config
 
     def analyse_data(self, historical_df):
-        historical_df, array = self._wrapped.analyse_data(historical_df)
-        array.append("moving_average")
-        return historical_df, array
+        historical_df = self._wrapped.analyse_data(historical_df)
+        return historical_df
 
 
 class RelativeStrengthIndex(BaseTechnicalAnalysisComponent):
@@ -22,6 +21,5 @@ class RelativeStrengthIndex(BaseTechnicalAnalysisComponent):
         self.config = config
 
     def analyse_data(self, historical_df):
-        historical_df, array = self._wrapped.analyse_data(historical_df)
-        array.append("rsi")
-        return historical_df, array
+        historical_df = self._wrapped.analyse_data(historical_df)
+        return historical_df

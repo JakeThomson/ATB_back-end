@@ -11,7 +11,7 @@ def logging_config():
     logging.getLogger("request_handler").setLevel(logging.INFO)
 
     # Set log level for trade processes.
-    logging.getLogger("trade_handler").setLevel(logging.INFO)
+    logging.getLogger("trade_handler").setLevel(logging.DEBUG)
 
     # Set log level for requests to yahoo finance.
     logging.getLogger("urllib3").setLevel(logging.WARNING)

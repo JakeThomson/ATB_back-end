@@ -1,23 +1,30 @@
+import threading
+
 from src.data_handlers.historical_data_handler import HistoricalDataHandler
 from src.trades import graph_composer
-from src.exceptions.custom_exceptions import TradeCreationError, InvalidHistoricalDataIndexError, TradeAnalysisError
+from src.exceptions.custom_exceptions import TradeCreationError, TradeAnalysisError, InvalidHistoricalDataIndexError
+
 from src.data_handlers import request_handler
 from src.trades.trade import Trade
 from src.strategy import strategy
+import datetime as dt
 import math
 import logging
 import random
+import time
 
 logger = logging.getLogger("trade_handler")
 
 
 class TradeHandler:
+    max_strategy_threads = 6
+
     def __init__(self, backtest, tickers):
         self.backtest = backtest
         self.hist_data_handler = HistoricalDataHandler(start_date=backtest.start_date)
         self.tickers = tickers
         self.open_trades = []
-        self.strategy = strategy.create_strategy()
+        self.strategy = strategy.create_strategy(backtest)
 
     def analyse_historical_data(self):
         """ Goes through the list of tickers and performs technical analysis on each one, as defined in the trading
@@ -25,30 +32,32 @@ class TradeHandler:
 
         :return: A dataframe containing all information on the stock that has the most confidence from the analysis.
         """
-        interesting_tickers = []
-        for ticker in self.tickers:
-            try:
-                interesting_stock_df = \
-                    self.hist_data_handler.get_hist_dataframe(ticker, num_weeks=self.strategy.max_lookback_range_weeks,
-                                                              backtest_date=self.backtest.backtest_date)
-            except FileNotFoundError:
-                # The CSV file for the given ticker could not be found.
-                continue
-            except InvalidHistoricalDataIndexError as e:
-                # The chosen stock does not have enough data covering the set period ahead of the current date.
-                continue
 
-            # Execute strategy on the ticker's past data.
-            interesting_ticker_df = self.strategy.execute(interesting_stock_df)
-            if not interesting_ticker_df.empty:
-                # If the ticker is flagged as interesting, append to interesting tickers array for further evaluation.
-                interesting_tickers.append(self.strategy.execute(interesting_ticker_df))
+        interesting_stock_dfs = []
+        download_threads = []
+        start_time = time.time()
+        logger.debug(f"Executing strategy on {len(self.tickers)} tickers")
 
-        if not interesting_tickers:
+        # Create a number of threads to download data concurrently, to speed up the process.
+        for thread_id in range(0, self.max_strategy_threads):
+            download_thread = threading.Thread(target=self.strategy.execute,
+                                                      args=(self.tickers, interesting_stock_dfs,
+                                                            self.max_strategy_threads, thread_id))
+            download_threads.append(download_thread)
+            download_thread.start()
+
+        # Wait for all threads to finish downloading data before continuing.
+        for download_thread in download_threads:
+            download_thread.join()
+
+        total_time = dt.timedelta(seconds=(time.time() - start_time))
+        logger.debug(f"Strategy finished in {total_time}")
+
+        if not interesting_stock_dfs:
             # No interesting stocks could be found for this date.
             raise TradeAnalysisError(self.backtest.backtest_date)
 
-        return random.choice(interesting_tickers)
+        return random.choice(interesting_stock_dfs)
 
     def calculate_num_shares_to_buy(self, interesting_df):
         """ Calculate the total number of shares the bot should buy in one order.
@@ -136,7 +145,7 @@ class TradeHandler:
         :return: none
         """
         logger.info(f"Closing trade {trade.ticker} with {'profit' if trade.profit_loss > 0 else 'loss'} "
-                     f"of {trade.profit_loss}")
+                    f"of {trade.profit_loss}")
         trade.sell_price = trade.current_price
         trade.sell_date = self.backtest.backtest_date
         self.backtest.available_balance += trade.sell_price * trade.share_qty
