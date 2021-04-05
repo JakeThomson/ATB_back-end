@@ -58,7 +58,7 @@ if __name__ == '__main__':
     deadline_reminder.print_deadline_reminder()
 
     # Signal handlers listen for events that attempt to kill the program (CTRL+C, PyCharm 'STOP', etc.).
-    # You must have 'kill.windows.processes.softly' set to true in PyCharm registry.
+    # You mustv have 'kill.windows.processes.softly' set to true in PyCharm registry.
     for sig in (SIGABRT, SIGBREAK, SIGILL, SIGINT, SIGSEGV, SIGTERM):
         signal(sig, handle_exit)
 

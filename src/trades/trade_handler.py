@@ -53,6 +53,9 @@ class TradeHandler:
         total_time = dt.timedelta(seconds=(time.time() - start_time))
         logger.debug(f"Strategy finished in {total_time}")
 
+        for df in interesting_stock_dfs:
+            df.fig.show()
+
         if not interesting_stock_dfs:
             # No interesting stocks could be found for this date.
             raise TradeAnalysisError(self.backtest.backtest_date)
@@ -116,7 +119,7 @@ class TradeHandler:
                       take_profit=tp,
                       stop_loss=sl)
         # Draws the open trade graph using the new trade object.
-        trade.figure, trade.figure_pct = graph_composer.draw_open_trade_figure(trade)
+        trade.figure, trade.figure_pct = graph_composer.draw_open_trade_graph(trade)
         return trade
 
     def make_trade(self, trade):
@@ -154,7 +157,7 @@ class TradeHandler:
         self.backtest.total_balance += trade.profit_loss
         self.backtest.total_profit_loss = self.backtest.total_balance - self.backtest.start_balance
         self.backtest.total_profit_loss_pct = self.backtest.total_profit_loss / self.backtest.start_balance * 100
-        trade.figure = graph_composer.draw_closed_trade_figure(trade)
+        trade.figure = graph_composer.draw_closed_trade_graph(trade)
 
     def analyse_open_trades(self):
         """ Iterates through all trades in the open_trades array stored in the trade_handler's properties. Sells trades
@@ -176,7 +179,7 @@ class TradeHandler:
             trade.current_price = trade.historical_data['close'].iloc[-1]
             trade.profit_loss = (trade.current_price * trade.share_qty) - trade.investment_total
             trade.profit_loss_pct = (trade.profit_loss / trade.investment_total) * 100
-            trade.figure, trade.figure_pct = graph_composer.draw_open_trade_figure(trade)
+            trade.figure, trade.figure_pct = graph_composer.draw_open_trade_graph(trade)
 
             if trade.current_price > trade.take_profit or trade.current_price < trade.stop_loss:
                 # Close the trade

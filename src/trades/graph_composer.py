@@ -2,10 +2,9 @@ from src.data_validators import date_validator
 import plotly.graph_objects as go
 import plotly.io
 import datetime as dt
-import json
 
 
-def draw_open_trade_figure(trade):
+def draw_open_trade_graph(trade):
     """ Draws a custom guage chart object that easily visualises how close the stock price is in relation to it's buy
         price and the tp/sl thresholds.
 
@@ -58,7 +57,7 @@ def draw_open_trade_figure(trade):
     return fig, cp_percent
 
 
-def draw_closed_trade_figure(trade):
+def draw_closed_trade_graph(trade):
     """ Draws a custom Figure object that visualises where the bot bought and sold the stocks on in relation to the
         stock's recent history..
 

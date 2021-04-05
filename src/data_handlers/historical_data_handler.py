@@ -98,13 +98,10 @@ class HistoricalDataHandler:
         self.num_tickers = len(tickers)
         return tickers
 
-    def get_hist_dataframe(self, ticker, backtest_date, num_weeks=12, num_days=0, validate_date=True):
+    def get_hist_dataframe(self, ticker, backtest_date, num_weeks=12, num_days=0):
         conn = sqlite3.connect('historical_data/historical_data.db')
         c = conn.cursor()
-        if validate_date:
-            buffer_date = date_validator.validate_date((backtest_date - dt.timedelta(weeks=num_weeks, days=num_days)), -1)
-        else:
-            buffer_date = backtest_date - dt.timedelta(weeks=num_weeks, days=num_days)
+        buffer_date = backtest_date - dt.timedelta(weeks=num_weeks, days=num_days)
 
         first_date = c.execute(f"""SELECT first_date FROM available_tickers WHERE ticker=? """, [ticker]).fetchone()[0]
         first_date = dt.datetime.strptime(first_date, '%Y-%m-%d %H:%M:%S')
