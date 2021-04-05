@@ -54,7 +54,7 @@ class Strategy:
 
         return strategy
 
-    def execute(self, tickers, interesting_stock_dfs, max_strategy_threads, thread_id):
+    def execute(self, tickers, potential_trades, max_strategy_threads, thread_id):
         # Get a portion of tickers for this thread to work with.
         slice_of_tickers = split_list(tickers, max_strategy_threads, thread_id)
 
@@ -65,5 +65,5 @@ class Strategy:
             except InvalidHistoricalDataIndexError as e:
                 continue
             # Execute strategy on the ticker's past data.
-            technical_analysis_results, interesting_stock_dfs = self.technical_analysis.analyse_data(stock_df, interesting_stock_dfs)
+            technical_analysis_results, fig, potential_trades = self.technical_analysis.analyse_data(stock_df, potential_trades)
         return

@@ -8,20 +8,40 @@ class MovingAverages(BaseTechnicalAnalysisComponent):
     def __init__(self, wrapped, config):
         self._wrapped = wrapped
         self.config = config
+        self.fig = None
 
-    def analyse_data(self, historical_df, interesting_stock_dfs):
-        historical_df, interesting_tickers = self._wrapped.analyse_data(historical_df, interesting_stock_dfs)
+    def analyse_data(self, historical_df, potential_trades):
+        historical_df, self.fig, potential_trades = self._wrapped.analyse_data(historical_df, potential_trades)
 
-        long_term = historical_df['close'].rolling(window=self.config['longTermDayPeriod']).mean()
-        short_term = historical_df['close'].rolling(window=self.config['shortTermDayPeriod']).mean()
+        if self.config['longTermType'] == "SMA":
+            long_term = self.simple_moving_avg(historical_df, self.config['longTermDayPeriod'])
+        elif self.config['longTermType'] == "EMA":
+            long_term = self.simple_moving_avg(historical_df, self.config['longTermDayPeriod'])
+        else:
+            raise Exception
+
+        if self.config['shortTermType'] == "SMA":
+            short_term = self.exponential_moving_avg(historical_df, self.config['shortTermDayPeriod'])
+        elif self.config['shortTermType'] == "EMA":
+            short_term = self.exponential_moving_avg(historical_df, self.config['longTermDayPeriod'])
+        else:
+            raise Exception
 
         intersect = self.check_for_intersect(long_term, short_term)
 
         if intersect:
-            self.draw_moving_avg_graph(historical_df, long_term, short_term)
-            interesting_stock_dfs.append(historical_df)
+            self.fig = self.draw_moving_avg_graph(historical_df, long_term, short_term)
+            potential_trades.append((historical_df, self.fig))
 
-        return historical_df, interesting_stock_dfs
+        return historical_df, self.fig, potential_trades
+
+    def simple_moving_avg(self, df, period):
+        res = df['close'].rolling(window=period).mean()
+        return res
+
+    def exponential_moving_avg(self, df, period):
+        res = df['close'].ewm(span=period, adjust=False).mean()
+        return res
 
     def check_for_intersect(self, long_term, short_term):
         lt_last_val = long_term[-1]
@@ -39,23 +59,28 @@ class MovingAverages(BaseTechnicalAnalysisComponent):
             return False
 
     def draw_moving_avg_graph(self, historical_df, long_term, short_term):
-        if not hasattr(historical_df, 'fig'):
-            historical_df.fig = go.Figure(data=[go.Candlestick(x=historical_df.index, open=historical_df['open'],
-                                                               high=historical_df['high'], low=historical_df['low'],
-                                                               close=historical_df['close'],
-                                                               name=f"{historical_df.ticker} Stock")])
+        fig = self.fig
 
-        historical_df.fig.add_traces([
-            go.Scatter(x=historical_df.index, y=long_term, name="50-day SMA", line=dict(shape="spline", smoothing=1.3)),
-            go.Scatter(x=historical_df.index, y=short_term, name="20-day SMA", line=dict(shape="spline", smoothing=1.3))
+        if fig is None:
+            fig = go.Figure(data=[go.Candlestick(x=historical_df.index, open=historical_df['open'],
+                                                 high=historical_df['high'], low=historical_df['low'],
+                                                 close=historical_df['close'], name=f"{historical_df.ticker} Stock")])
+
+        fig.add_traces([
+            go.Scatter(x=historical_df.index, y=long_term,
+                       name=f"{self.config['longTermDayPeriod']}-day {self.config['longTermType']}",
+                       line=dict(shape="spline", smoothing=1.3)),
+            go.Scatter(x=historical_df.index, y=short_term,
+                       name=f"{self.config['shortTermDayPeriod']}-day {self.config['shortTermType']}",
+                       line=dict(shape="spline", smoothing=1.3))
         ])
-        historical_df.fig.update_layout(
+        fig.update_layout(
             title='Moving averages',
             yaxis_title=f'{historical_df.ticker} Stock',
             xaxis_title='Date',
             xaxis_rangeslider_visible=False
         )
-        return
+        return fig
 
 
 class RelativeStrengthIndex(BaseTechnicalAnalysisComponent):
@@ -64,7 +89,8 @@ class RelativeStrengthIndex(BaseTechnicalAnalysisComponent):
     def __init__(self, wrapped, config):
         self._wrapped = wrapped
         self.config = config
+        self.fig = None
 
-    def analyse_data(self, historical_df, interesting_stock_dfs):
-        historical_df, interesting_tickers = self._wrapped.analyse_data(historical_df, interesting_stock_dfs)
-        return historical_df, interesting_stock_dfs
+    def analyse_data(self, historical_df, potential_trades):
+        historical_df, self.fig, potential_trades = self._wrapped.analyse_data(historical_df, potential_trades)
+        return historical_df, self.fig, potential_trades

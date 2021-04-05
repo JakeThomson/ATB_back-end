@@ -33,7 +33,7 @@ class TradeHandler:
         :return: A dataframe containing all information on the stock that has the most confidence from the analysis.
         """
 
-        interesting_stock_dfs = []
+        potential_trades = []
         download_threads = []
         start_time = time.time()
         logger.debug(f"Executing strategy on {len(self.tickers)} tickers")
@@ -41,7 +41,7 @@ class TradeHandler:
         # Create a number of threads to download data concurrently, to speed up the process.
         for thread_id in range(0, self.max_strategy_threads):
             download_thread = threading.Thread(target=self.strategy.execute,
-                                                      args=(self.tickers, interesting_stock_dfs,
+                                                      args=(self.tickers, potential_trades,
                                                             self.max_strategy_threads, thread_id))
             download_threads.append(download_thread)
             download_thread.start()
@@ -53,14 +53,11 @@ class TradeHandler:
         total_time = dt.timedelta(seconds=(time.time() - start_time))
         logger.debug(f"Strategy finished in {total_time}")
 
-        for df in interesting_stock_dfs:
-            df.fig.show()
-
-        if not interesting_stock_dfs:
+        if not potential_trades:
             # No interesting stocks could be found for this date.
             raise TradeAnalysisError(self.backtest.backtest_date)
 
-        return random.choice(interesting_stock_dfs)
+        return random.choice(potential_trades)
 
     def calculate_num_shares_to_buy(self, interesting_df):
         """ Calculate the total number of shares the bot should buy in one order.
