@@ -1,6 +1,6 @@
 from src.data_handlers.historical_data_handler import HistoricalDataHandler, split_list
 from src.strategy.technical_analysis import TechnicalAnalysis
-from src.exceptions.custom_exceptions import InvalidHistoricalDataIndexError
+from src.exceptions.custom_exceptions import InvalidHistoricalDataIndexError, InvalidStrategyConfigException
 import logging
 
 logger = logging.getLogger("strategy")
@@ -20,9 +20,9 @@ def create_strategy(backtest):
                 }
             },
             {
-                "name": "RelativeStrengthIndex",
+                "name": "BollingerBands",
                 "config": {
-                    "type": "SMA",
+                    "dayPeriod": 20
                 }
             }
         ]
@@ -58,10 +58,16 @@ class Strategy:
                 stock_df = self.hist_data_handler.get_hist_dataframe(ticker, self.backtest.backtest_date,
                                                                      self.max_lookback_range_weeks)
                 stock_df.attrs['triggered_indicators'] = []
-            except InvalidHistoricalDataIndexError as e:
+            except InvalidHistoricalDataIndexError:
                 continue
-            # Execute strategy on the ticker's past data.
-            stock_df, fig = self.technical_analysis.analyse_data(stock_df)
+
+            try:
+                # Execute strategy on the ticker's past data.
+                stock_df, fig = self.technical_analysis.analyse_data(stock_df)
+            except InvalidStrategyConfigException as e:
+                logger.error(e)
+                break
+
             if stock_df.attrs['triggered_indicators']:
                 potential_trades.append((stock_df, fig))
         return

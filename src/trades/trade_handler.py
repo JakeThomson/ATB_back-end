@@ -114,7 +114,8 @@ class TradeHandler:
                       share_qty=qty,
                       investment_total=investment_total,
                       take_profit=tp,
-                      stop_loss=sl)
+                      stop_loss=sl,
+                      triggered_indicators=interesting_df.attrs['triggered_indicators'])
         # Draws the open trade graph using the new trade object.
         trade.figure, trade.figure_pct = graph_composer.draw_open_trade_graph(trade)
         return trade
@@ -127,7 +128,7 @@ class TradeHandler:
         :return: none
         """
         logger.info(f"Buying {trade.share_qty} shares of {trade.ticker} for "
-                     f"{'£{:,.2f}'.format(trade.investment_total)}")
+                    f"{'£{:,.2f}'.format(trade.investment_total)} based off {', '.join(trade.triggered_indicators)}")
         self.backtest.available_balance -= trade.investment_total
         # Convert the object to allow it to be serialized correctly for storage within the MySQL database.
         json_trade = trade.to_JSON_serializable()
@@ -145,7 +146,7 @@ class TradeHandler:
         :return: none
         """
         logger.info(f"Closing trade {trade.ticker} with {'profit' if trade.profit_loss > 0 else 'loss'} "
-                    f"of {trade.profit_loss}")
+                    f"of {round(trade.profit_loss,2)}, which was triggered by {', '.join(trade.triggered_indicators)}")
         trade.sell_price = trade.current_price
         trade.sell_date = self.backtest.backtest_date
         self.backtest.available_balance += trade.sell_price * trade.share_qty

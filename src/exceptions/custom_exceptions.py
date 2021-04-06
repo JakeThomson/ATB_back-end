@@ -32,3 +32,9 @@ class HistoricalDataValidationError(Exception):
     def __init__(self, ticker, invalid_reason):
         self.message = f"'{ticker}' data invalid: {invalid_reason}"
         super().__init__(self.message)
+
+
+class InvalidStrategyConfigException(Exception):
+    def __init__(self, invalid_reason):
+        self.message = f"Strategy configuration data invalid: {invalid_reason}"
+        super().__init__(self.message)
