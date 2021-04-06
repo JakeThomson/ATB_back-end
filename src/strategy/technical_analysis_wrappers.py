@@ -10,8 +10,8 @@ class MovingAverages(BaseTechnicalAnalysisComponent):
         self.config = config
         self.fig = None
 
-    def analyse_data(self, historical_df, potential_trades):
-        historical_df, self.fig, potential_trades = self._wrapped.analyse_data(historical_df, potential_trades)
+    def analyse_data(self, historical_df):
+        historical_df, self.fig = self._wrapped.analyse_data(historical_df)
 
         if self.config['longTermType'] == "SMA":
             long_term = self.simple_moving_avg(historical_df, self.config['longTermDayPeriod'])
@@ -31,9 +31,9 @@ class MovingAverages(BaseTechnicalAnalysisComponent):
 
         if intersect:
             self.fig = self.draw_moving_avg_graph(historical_df, long_term, short_term)
-            potential_trades.append((historical_df, self.fig))
+            historical_df.attrs['triggered_indicators'].append("MovingAverages")
 
-        return historical_df, self.fig, potential_trades
+        return historical_df, self.fig
 
     def simple_moving_avg(self, df, period):
         res = df['close'].rolling(window=period).mean()
@@ -64,7 +64,8 @@ class MovingAverages(BaseTechnicalAnalysisComponent):
         if fig is None:
             fig = go.Figure(data=[go.Candlestick(x=historical_df.index, open=historical_df['open'],
                                                  high=historical_df['high'], low=historical_df['low'],
-                                                 close=historical_df['close'], name=f"{historical_df.ticker} Stock")])
+                                                 close=historical_df['close'],
+                                                 name=f"{historical_df.attrs['ticker']} Stock")])
 
         fig.add_traces([
             go.Scatter(x=historical_df.index, y=long_term,
@@ -76,7 +77,7 @@ class MovingAverages(BaseTechnicalAnalysisComponent):
         ])
         fig.update_layout(
             title='Moving averages',
-            yaxis_title=f'{historical_df.ticker} Stock',
+            yaxis_title=f"{historical_df.attrs['ticker']} Stock",
             xaxis_title='Date',
             xaxis_rangeslider_visible=False
         )
@@ -91,6 +92,6 @@ class RelativeStrengthIndex(BaseTechnicalAnalysisComponent):
         self.config = config
         self.fig = None
 
-    def analyse_data(self, historical_df, potential_trades):
-        historical_df, self.fig, potential_trades = self._wrapped.analyse_data(historical_df, potential_trades)
-        return historical_df, self.fig, potential_trades
+    def analyse_data(self, historical_df):
+        historical_df, self.fig = self._wrapped.analyse_data(historical_df)
+        return historical_df, self.fig

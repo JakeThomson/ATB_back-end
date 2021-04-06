@@ -1,12 +1,7 @@
-import time
-
 from src.data_handlers.historical_data_handler import HistoricalDataHandler, split_list
 from src.strategy.technical_analysis import TechnicalAnalysis
 from src.exceptions.custom_exceptions import InvalidHistoricalDataIndexError
 import logging
-import sqlite3
-import pandas as pd
-import datetime as dt
 
 logger = logging.getLogger("strategy")
 
@@ -62,8 +57,11 @@ class Strategy:
             try:
                 stock_df = self.hist_data_handler.get_hist_dataframe(ticker, self.backtest.backtest_date,
                                                                      self.max_lookback_range_weeks)
+                stock_df.attrs['triggered_indicators'] = []
             except InvalidHistoricalDataIndexError as e:
                 continue
             # Execute strategy on the ticker's past data.
-            technical_analysis_results, fig, potential_trades = self.technical_analysis.analyse_data(stock_df, potential_trades)
+            stock_df, fig = self.technical_analysis.analyse_data(stock_df)
+            if stock_df.attrs['triggered_indicators']:
+                potential_trades.append((stock_df, fig))
         return

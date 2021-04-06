@@ -107,7 +107,7 @@ class TradeHandler:
         """
         buy_price, qty, investment_total = self.calculate_num_shares_to_buy(interesting_df)
         tp, sl = self.calculate_tp_sl(qty, investment_total)
-        trade = Trade(ticker=interesting_df.ticker,
+        trade = Trade(ticker=interesting_df.attrs['ticker'],
                       historical_data=interesting_df,
                       buy_date=self.backtest.backtest_date,
                       buy_price=buy_price,

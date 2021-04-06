@@ -112,7 +112,7 @@ class HistoricalDataHandler:
             f"""SELECT * FROM '{ticker}' WHERE `date` >= ? AND `date` <= ?""", conn, params=[buffer_date, backtest_date],
             index_col='date', parse_dates=['date'])
 
-        historical_df.ticker = ticker
+        historical_df.attrs['ticker'] = ticker
         return historical_df
 
     def sqlite_table_up_to_date(self, ticker):

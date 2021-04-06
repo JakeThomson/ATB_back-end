@@ -25,7 +25,7 @@ class HistoricalDataValidator:
         if date_gap_str != "2001-09-10 - 2001-09-17":
             if day_gap.days > self.max_day_gap:
                 invalid_reason = f"Date gap of {day_gap.days} days found ({date_gap_str})"
-                raise HistoricalDataValidationError(self.dataframe.ticker, invalid_reason)
+                raise HistoricalDataValidationError(self.dataframe.attrs['ticker'], invalid_reason)
 
     def null_value_check(self, row_values):
         """ Checks the current row for null values.
@@ -36,7 +36,7 @@ class HistoricalDataValidator:
         """
         if row_values.isnull().values.any():
             invalid_reason = f"Missing values on date '{row_values.date}'"
-            raise HistoricalDataValidationError(self.dataframe.ticker, invalid_reason)
+            raise HistoricalDataValidationError(self.dataframe.attrs['ticker'], invalid_reason)
 
     def repeated_values_check(self, row_values):
         """ Checks the current row for values that are repeated more than a set limit.
@@ -60,7 +60,7 @@ class HistoricalDataValidator:
             # If the length of the set is greater than 1, then the rows in the dataframe slice are not identical.
             if len(set(rows_as_list)) == 1:
                 invalid_reason = f"Values repeated {repeat_limit} or more times ({row_values.date})"
-                raise HistoricalDataValidationError(self.dataframe.ticker, invalid_reason)
+                raise HistoricalDataValidationError(self.dataframe.attrs['ticker'], invalid_reason)
 
     def unexplainable_value_change_check(self, row_values):
         """ Compares the current rows values against the previous, checking to see that there are no extreme changes
@@ -76,7 +76,7 @@ class HistoricalDataValidator:
         percent_change = ((value - prev_value) / prev_value) * 100
         if abs(percent_change) > self.percent_change_limit:
             invalid_reason = f" Close value had a change of {round(percent_change,2)}% in one day ({row_values.date.date()})"
-            raise HistoricalDataValidationError(self.dataframe.ticker, invalid_reason)
+            raise HistoricalDataValidationError(self.dataframe.attrs['ticker'], invalid_reason)
 
     def validate_data(self):
         """ Performs all validation checks on every row of the dataframe provided to the validator.
