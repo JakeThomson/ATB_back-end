@@ -15,7 +15,7 @@ logger = logging.getLogger("backtest")
 class Backtest:
 
     def __init__(self, settings):
-        """ Constructor class that instantiates the backtest object and simultaneously calls upon the backtest
+        """ Constructor that instantiates the backtest object and simultaneously calls upon the backtest
             initialisation endpoint in the data access api.
 
         :param properties: a dict object holding all properties of the backtest.
@@ -60,7 +60,7 @@ class Backtest:
         next_date = self.backtest_date + dt.timedelta(days=1)
         self.backtest_date = date_validator.validate_date(next_date, 1)
 
-        logger.info(f"BACKTEST DATE: {dt.datetime.strftime(self.backtest_date, '%Y-%m-%d')}")
+        logger.info(f"---- BACKTEST DATE: {dt.datetime.strftime(self.backtest_date, '%Y-%m-%d')} ----")
 
         body = {
             "backtest_date": self.backtest_date
@@ -106,7 +106,7 @@ class Backtest:
                 # Try to invest in new stocks, move to the next day if nothing good is found or if balance is too low.
                 try:
                     # Select the stock that has the most confidence from the analysis.
-                    interesting_df = trade_handler.analyse_historical_data()
+                    interesting_df, fig = trade_handler.analyse_historical_data()
                     # Go to automatically open an order for that stock using the rules set.
                     trade = trade_handler.create_trade(interesting_df)
                     trade_handler.make_trade(trade)

@@ -1,7 +1,7 @@
 import copy
 
 class Trade:
-    def __init__(self, ticker, historical_data, buy_date, buy_price, share_qty, investment_total, take_profit, stop_loss):
+    def __init__(self, ticker, historical_data, buy_date, buy_price, share_qty, investment_total, take_profit, stop_loss, triggered_indicators):
         self.trade_id = None
         self.ticker = ticker
         self.historical_data = historical_data
@@ -16,6 +16,7 @@ class Trade:
         self.investment_total = investment_total
         self.take_profit = take_profit
         self.stop_loss = stop_loss
+        self.triggered_indicators = triggered_indicators
         self.figure = {"graph": "placeholder"}
         self.figure_pct = 0
 

@@ -1,13 +1,13 @@
 from src.data_handlers.historical_data_handler import HistoricalDataHandler
 from src.data_handlers import request_handler
-from src.backtest.backtest import Backtest, BacktestController
+from src.backtest.backtest import BacktestController
+import src.deadline_reminder as deadline_reminder
 import config
 import sys
 import datetime as dt
 import socketio
 import logging as log
 import time
-import atexit
 from signal import signal, SIGABRT, SIGBREAK, SIGILL, SIGINT, SIGSEGV, SIGTERM
 from threading import Thread
 
@@ -55,8 +55,10 @@ def handle_exit(signum, frame):
 # Main code
 if __name__ == '__main__':
 
+    deadline_reminder.print_deadline_reminder()
+
     # Signal handlers listen for events that attempt to kill the program (CTRL+C, PyCharm 'STOP', etc.).
-    # You must have 'kill.windows.processes.softly' set to true in PyCharm registry.
+    # You mustv have 'kill.windows.processes.softly' set to true in PyCharm registry.
     for sig in (SIGABRT, SIGBREAK, SIGILL, SIGINT, SIGSEGV, SIGTERM):
         signal(sig, handle_exit)
 
@@ -68,7 +70,7 @@ if __name__ == '__main__':
     start_date = dt.datetime(2009, 1, 1)
     hist_data_mgr = HistoricalDataHandler(start_date=start_date, market_index="S&P500", max_processes=7)
     tickers = hist_data_mgr.get_tickers()
-    hist_data_mgr.multiprocess_data_download(tickers)
+    # hist_data_mgr.multiprocess_data_download(tickers)
 
     backtest_controller = BacktestController(sio, tickers)
 

@@ -13,6 +13,12 @@ retry_delay_seconds = 3
 
 
 def set_environment(sio, environment):
+    """ Set the connection URLs for the API server and sockets depending on what environment is provided.
+
+    :param sio: The socket.io connection.
+    :param environment: A string holding the environment to use (prod or local).
+    :return: none
+    """
     global URL
     if environment.lower() == "prod":
         URL = "https://trading-api.jake-t.codes"

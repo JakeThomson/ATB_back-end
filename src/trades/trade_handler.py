@@ -1,21 +1,31 @@
+import threading
+
 from src.data_handlers.historical_data_handler import HistoricalDataHandler
 from src.trades import graph_composer
-from src.exceptions.custom_exceptions import TradeCreationError, InvalidHistoricalDataIndexError, TradeAnalysisError
+from src.exceptions.custom_exceptions import TradeCreationError, TradeAnalysisError, InvalidHistoricalDataIndexError
+
 from src.data_handlers import request_handler
 from src.trades.trade import Trade
-import random
+from src.strategy import strategy
+import datetime as dt
 import math
 import logging
+import random
+import time
 
 logger = logging.getLogger("trade_handler")
 
 
 class TradeHandler:
+    max_strategy_threads = 6
+
     def __init__(self, backtest, tickers):
         self.backtest = backtest
         self.hist_data_handler = HistoricalDataHandler(start_date=backtest.start_date)
         self.tickers = tickers
         self.open_trades = []
+        # The dynamically created strategy that will be used within the backtest.
+        self.strategy = strategy.create_strategy(backtest)
 
     def analyse_historical_data(self):
         """ Goes through the list of tickers and performs technical analysis on each one, as defined in the trading
@@ -23,22 +33,33 @@ class TradeHandler:
 
         :return: A dataframe containing all information on the stock that has the most confidence from the analysis.
         """
-        # Currently there is no analysis, just a 60% chance of the bot choosing a random ticker from the list.
-        if random.random() < 0.6:
-            while True:
-                try:
-                    interesting_tickers = [random.choice(self.tickers)]
-                    interesting_stock = interesting_tickers[0]
 
-                    interesting_stock_df = self.hist_data_handler.get_hist_dataframe(interesting_stock, num_weeks=16,
-                                                                                     backtest_date=self.backtest.backtest_date)
-                    return interesting_stock_df
-                except InvalidHistoricalDataIndexError as e:
-                    # The chosen stock does not have enough data covering the set period ahead of the current date.
-                    logger.debug(e)
-        else:
+        potential_trades = []
+        download_threads = []
+        start_time = time.time()
+        logger.debug(f"Executing strategy on {len(self.tickers)} tickers")
+
+        # Create a number of threads to download data concurrently, to speed up the process.
+        for thread_id in range(0, self.max_strategy_threads):
+            download_thread = threading.Thread(target=self.strategy.execute,
+                                                      args=(self.tickers, potential_trades,
+                                                            self.max_strategy_threads, thread_id))
+            download_threads.append(download_thread)
+            download_thread.start()
+
+        # Wait for all threads to finish downloading data before continuing.
+        for download_thread in download_threads:
+            download_thread.join()
+
+        total_time = dt.timedelta(seconds=(time.time() - start_time))
+        logger.debug(f"Strategy finished in {total_time}")
+
+        if not potential_trades:
             # No interesting stocks could be found for this date.
             raise TradeAnalysisError(self.backtest.backtest_date)
+
+        choice = random.choice(potential_trades)
+        return choice
 
     def calculate_num_shares_to_buy(self, interesting_df):
         """ Calculate the total number of shares the bot should buy in one order.
@@ -88,16 +109,17 @@ class TradeHandler:
         """
         buy_price, qty, investment_total = self.calculate_num_shares_to_buy(interesting_df)
         tp, sl = self.calculate_tp_sl(qty, investment_total)
-        trade = Trade(ticker=interesting_df.ticker,
+        trade = Trade(ticker=interesting_df.attrs['ticker'],
                       historical_data=interesting_df,
                       buy_date=self.backtest.backtest_date,
                       buy_price=buy_price,
                       share_qty=qty,
                       investment_total=investment_total,
                       take_profit=tp,
-                      stop_loss=sl)
+                      stop_loss=sl,
+                      triggered_indicators=interesting_df.attrs['triggered_indicators'])
         # Draws the open trade graph using the new trade object.
-        trade.figure, trade.figure_pct = graph_composer.draw_open_trade_figure(trade)
+        trade.figure, trade.figure_pct = graph_composer.draw_open_trade_graph(trade)
         return trade
 
     def make_trade(self, trade):
@@ -107,8 +129,8 @@ class TradeHandler:
         :param trade: A trade object holding all information on the opened trade.
         :return: none
         """
-        logger.debug(f"Buying {trade.share_qty} shares of {trade.ticker} for "
-                     f"{'£{:,.2f}'.format(trade.investment_total)}")
+        logger.info(f"Buying {trade.share_qty} shares of {trade.ticker} for "
+                    f"{'£{:,.2f}'.format(trade.investment_total)} based off {', '.join(trade.triggered_indicators)}")
         self.backtest.available_balance -= trade.investment_total
         # Convert the object to allow it to be serialized correctly for storage within the MySQL database.
         json_trade = trade.to_JSON_serializable()
@@ -125,8 +147,8 @@ class TradeHandler:
         :param trade: The trade to be closed.
         :return: none
         """
-        logger.debug(f"Closing trade {trade.ticker} with {'profit' if trade.profit_loss > 0 else 'loss'} "
-                     f"of {trade.profit_loss}")
+        logger.info(f"Closing trade {trade.ticker} with {'profit' if trade.profit_loss > 0 else 'loss'} "
+                    f"of {round(trade.profit_loss,2)}, which was triggered by {', '.join(trade.triggered_indicators)}")
         trade.sell_price = trade.current_price
         trade.sell_date = self.backtest.backtest_date
         self.backtest.available_balance += trade.sell_price * trade.share_qty
@@ -135,7 +157,7 @@ class TradeHandler:
         self.backtest.total_balance += trade.profit_loss
         self.backtest.total_profit_loss = self.backtest.total_balance - self.backtest.start_balance
         self.backtest.total_profit_loss_pct = self.backtest.total_profit_loss / self.backtest.start_balance * 100
-        trade.figure = graph_composer.draw_closed_trade_figure(trade)
+        trade.figure = graph_composer.draw_closed_trade_graph(trade)
 
     def analyse_open_trades(self):
         """ Iterates through all trades in the open_trades array stored in the trade_handler's properties. Sells trades
@@ -157,7 +179,7 @@ class TradeHandler:
             trade.current_price = trade.historical_data['close'].iloc[-1]
             trade.profit_loss = (trade.current_price * trade.share_qty) - trade.investment_total
             trade.profit_loss_pct = (trade.profit_loss / trade.investment_total) * 100
-            trade.figure, trade.figure_pct = graph_composer.draw_open_trade_figure(trade)
+            trade.figure, trade.figure_pct = graph_composer.draw_open_trade_graph(trade)
 
             if trade.current_price > trade.take_profit or trade.current_price < trade.stop_loss:
                 # Close the trade
