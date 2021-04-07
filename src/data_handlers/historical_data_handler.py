@@ -35,9 +35,7 @@ class HistoricalDataHandler:
         self.max_processes = max_processes
         self.start_date = date_validator.validate_date(start_date, 1)
         self.end_date = date_validator.validate_date(end_date, -1)
-        self.file_path = f"historical_data/{self.market_index}/"
         self.market_index_file_path = "historical_data/market_index_lists/"
-        self.invalid_file_path = f"historical_data/{self.market_index}/INVALID/"
 
     def get_tickers(self):
         """ Returns a list of tickers that are a part of the index stated in self.index.
@@ -99,20 +97,38 @@ class HistoricalDataHandler:
         return tickers
 
     def get_hist_dataframe(self, ticker, backtest_date, num_weeks=12, num_days=0):
+        """ Retrieves the historical dataframe for the specified ticker from the SQLite database, for a number of
+            days or weeks before the given date.
+
+        :param ticker: String of the company ticker to retrieve.
+        :param backtest_date: A datetime object holding the 'end' date to retrieve.
+        :param num_weeks: Number of weeks worth of data to retrieve before 'end' date.
+        :param num_days: Number of days worth of data to retrieve before 'end' date.
+        :return: A DataFrame holding the historical data for the given period.
+        """
+
+        # Connect to SQLite database.
         conn = sqlite3.connect('historical_data/historical_data.db')
         c = conn.cursor()
+        # Calculate the 'start' date for the date range.
         buffer_date = backtest_date - dt.timedelta(weeks=num_weeks, days=num_days)
 
+        # Get the first date of historical data that is recorded in the SQLite database of the ticker.
         first_date = c.execute(f"""SELECT first_date FROM available_tickers WHERE ticker=? """, [ticker]).fetchone()[0]
         first_date = dt.datetime.strptime(first_date, '%Y-%m-%d %H:%M:%S')
         if buffer_date <= first_date:
+            # If trying to access a data that doesn't exist, throw exception.
             raise InvalidHistoricalDataIndexError(ticker, buffer_date, first_date)
 
+        # Grab historical dataframe from the relevant SQLite table for the correct date range.
         historical_df = pd.read_sql_query(
             f"""SELECT * FROM '{ticker}' WHERE `date` >= ? AND `date` <= ?""", conn, params=[buffer_date, backtest_date],
             index_col='date', parse_dates=['date'])
 
+        # Add the ticker to the dataframe's custom attributes for later identification.
         historical_df.attrs['ticker'] = ticker
+
+        conn.close()
         return historical_df
 
     def sqlite_table_up_to_date(self, ticker):
@@ -122,18 +138,20 @@ class HistoricalDataHandler:
         :param ticker: A string containing a company ticker
         :return: True if table data covers the dates, False if not.
         """
-        # Load the ticker data, look at the last index and compare the date to self.end_date.
         conn = sqlite3.connect('historical_data/historical_data.db')
         c = conn.cursor()
 
+        # Retrieve the most recent recorded date in the relevant SQLite table.
         last_date = c.execute(f"""SELECT last_date FROM available_tickers WHERE ticker=? """, [ticker]).fetchone()[0]
         last_date = dt.datetime.strptime(last_date, '%Y-%m-%d %H:%M:%S')
 
         conn.close()
 
         if last_date.date() < self.end_date.date():
+            # If the date is before the end date set in the handler, then it is not up to date.
             return False, last_date
         else:
+            # Else, it is up to date.
             return True, None
 
     def download_historical_data_to_sqlite(self, tickers, process_id):
@@ -225,9 +243,8 @@ class HistoricalDataHandler:
             c.execute(
                 '''SELECT count(name) FROM sqlite_master WHERE type='table' AND name='available_tickers' ''') \
                 .fetchone()[0]
-        # If the count is 1, then table exists
+        # If the table does not exist in SQLite, then create it.
         if not exists:
-            # Create table in SQLite DB for the ticker.
             c.execute(f'''CREATE TABLE available_tickers
                              ([ticker] text, [valid] boolean, [market_index] text, [first_date] datetime, 
                               [last_date] datetime)''')
@@ -237,11 +254,6 @@ class HistoricalDataHandler:
         log.info("Saving/updating ticker historical data to local database.")
         download_processes = []
         start_time = time.time()
-
-        if not os.path.exists(self.file_path):
-            os.makedirs(self.file_path)
-        if not os.path.exists(self.invalid_file_path):
-            os.makedirs(self.invalid_file_path)
 
         # Create a number of processes to download data concurrently, to speed up the process.
         for process_id in range(0, self.max_processes):

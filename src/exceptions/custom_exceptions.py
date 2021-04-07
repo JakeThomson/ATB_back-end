@@ -35,6 +35,7 @@ class HistoricalDataValidationError(Exception):
 
 
 class InvalidStrategyConfigException(Exception):
+    """ Exception raised when a strategy configuration setting has is invalid/unrecognised. """
     def __init__(self, invalid_reason):
         self.message = f"Strategy configuration data invalid: {invalid_reason}"
         super().__init__(self.message)

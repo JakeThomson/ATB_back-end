@@ -24,6 +24,7 @@ class TradeHandler:
         self.hist_data_handler = HistoricalDataHandler(start_date=backtest.start_date)
         self.tickers = tickers
         self.open_trades = []
+        # The dynamically created strategy that will be used within the backtest.
         self.strategy = strategy.create_strategy(backtest)
 
     def analyse_historical_data(self):
@@ -57,7 +58,8 @@ class TradeHandler:
             # No interesting stocks could be found for this date.
             raise TradeAnalysisError(self.backtest.backtest_date)
 
-        return random.choice(potential_trades)
+        choice = random.choice(potential_trades)
+        return choice
 
     def calculate_num_shares_to_buy(self, interesting_df):
         """ Calculate the total number of shares the bot should buy in one order.

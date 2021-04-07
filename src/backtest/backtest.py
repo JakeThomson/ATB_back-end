@@ -15,7 +15,7 @@ logger = logging.getLogger("backtest")
 class Backtest:
 
     def __init__(self, settings):
-        """ Constructor class that instantiates the backtest object and simultaneously calls upon the backtest
+        """ Constructor that instantiates the backtest object and simultaneously calls upon the backtest
             initialisation endpoint in the data access api.
 
         :param properties: a dict object holding all properties of the backtest.

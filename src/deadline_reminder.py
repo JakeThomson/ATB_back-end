@@ -30,6 +30,12 @@ def print_deadline_reminder():
             if first_chap_found:
                 full_text.append(paragraph.text)
 
+        for table in report.tables:
+            for i, row in enumerate(table.rows):
+                for cell in row.cells:
+                    text = cell.text
+                    full_text.append(text)
+
         string = '\n'.join(full_text)
         string = string.replace('\n', ' ')
         word_count = len(list(filter(None, string.split(' '))))
@@ -38,7 +44,7 @@ def print_deadline_reminder():
         report_difference = deadline - report_start_date
         current_report_progress = current_date - report_start_date
         current_project_progress = current_date - project_start_date
-        report_time_progress_pct = round((current_report_progress / total_difference) * 100, 2)
+        report_time_progress_pct = round((current_report_progress / report_difference) * 100, 2)
         project_time_progress_pct = round((current_project_progress / total_difference) * 100, 2)
         target_word_count = round(word_limit * ((end_of_current_date - report_start_date) / report_difference))
         logging.info("*---------------------- REPORT STATUS ----------------------*")
