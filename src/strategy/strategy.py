@@ -1,3 +1,4 @@
+from src.data_handlers import request_handler
 from src.data_handlers.historical_data_handler import HistoricalDataHandler, split_list
 from src.strategy.technical_analysis import TechnicalAnalysis
 from src.exceptions.custom_exceptions import InvalidHistoricalDataIndexError, InvalidStrategyConfigException
@@ -14,26 +15,7 @@ def create_strategy(backtest):
     """
 
     # Manual configuration for now, will eventually be set by the UI.
-    input_config = {
-        "lookbackRangeWeeks": 24,
-        "technicalAnalysis": [
-            {
-                "name": "Moving Averages",
-                "config": {
-                    "shortTermType": "SMA",
-                    "shortTermDayPeriod": 20,
-                    "longTermType": "SMA",
-                    "longTermDayPeriod": 50,
-                }
-            },
-            {
-                "name": "Bollinger Bands",
-                "config": {
-                    "dayPeriod": 20
-                }
-            }
-        ]
-    }
+    input_config = request_handler.get("/strategies").json()
 
     # Create the strategy using the configuration.
     strategy = Strategy(input_config, backtest)
