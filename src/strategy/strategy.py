@@ -16,9 +16,9 @@ def create_strategy(backtest):
     # Manual configuration for now, will eventually be set by the UI.
     input_config = {
         "lookbackRangeWeeks": 24,
-        "analysisTechniques": [
+        "technicalAnalysis": [
             {
-                "name": "MovingAverages",
+                "name": "Moving Averages",
                 "config": {
                     "shortTermType": "SMA",
                     "shortTermDayPeriod": 20,
@@ -27,13 +27,16 @@ def create_strategy(backtest):
                 }
             },
             {
-                "name": "BollingerBands",
+                "name": "Bollinger Bands",
                 "config": {
                     "dayPeriod": 20
                 }
             }
         ]
     }
+
+    for i, x in enumerate(input_config['technicalAnalysis']):
+        input_config['technicalAnalysis'][i]['name'] = input_config['technicalAnalysis'][i]['name'].replace(" ", "")
 
     # Create the strategy using the configuration.
     strategy = Strategy(input_config, backtest)
@@ -66,13 +69,13 @@ class Strategy:
 
         # Create a module object that has all references to the wrapper classes within it.
         wrappers = __import__('src.strategy.technical_analysis_wrappers',
-                              fromlist=[d['name'] for d in config['analysisTechniques']])
+                              fromlist=[d['name'] for d in config['technicalAnalysis']])
 
         # Create a plain technical analysis that has no logic.
         technical_analysis = TechnicalAnalysis()
 
         # Iterate through all methods specified in the config.
-        for method in config['analysisTechniques']:
+        for method in config['technicalAnalysis']:
             # Get a reference to the wrapper class that matches the method name provided in the config.
             analysis_wrapper = getattr(wrappers, method['name'])
             # Wrap the technical analysis object with the wrapper that the reference object points to, also passing the
