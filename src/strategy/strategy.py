@@ -35,9 +35,6 @@ def create_strategy(backtest):
         ]
     }
 
-    for i, x in enumerate(input_config['technicalAnalysis']):
-        input_config['technicalAnalysis'][i]['name'] = input_config['technicalAnalysis'][i]['name'].replace(" ", "")
-
     # Create the strategy using the configuration.
     strategy = Strategy(input_config, backtest)
     return strategy
@@ -67,19 +64,16 @@ class Strategy:
         :return: A TechnicalAnalysis object which may have been dynamically wrapped depending on the config provided.
         """
 
-        # Create a module object that has all references to the wrapper classes within it.
-        wrappers = __import__('src.strategy.technical_analysis_wrappers',
-                              fromlist=[d['name'] for d in config['technicalAnalysis']])
-
         # Create a plain technical analysis that has no logic.
         technical_analysis = TechnicalAnalysis()
 
-        # Iterate through all methods specified in the config.
         for method in config['technicalAnalysis']:
-            # Get a reference to the wrapper class that matches the method name provided in the config.
-            analysis_wrapper = getattr(wrappers, method['name'])
-            # Wrap the technical analysis object with the wrapper that the reference object points to, also passing the
-            # config settings provided for that method.
+            # Create a module object that has all references to the wrapper classes within it.
+            module = __import__(f'src.strategy.technical_analysis_modules.{method["name"]}.wrapper',
+                                fromlist=["all"])
+
+            analysis_wrapper = getattr(module, method['name'].replace(" ", ""))
+
             technical_analysis = analysis_wrapper(technical_analysis, method['config'])
 
         # Return the dynamically wrapped technical analysis module.
