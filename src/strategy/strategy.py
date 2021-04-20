@@ -1,6 +1,6 @@
 from src.data_handlers import request_handler
 from src.data_handlers.historical_data_handler import HistoricalDataHandler, split_list
-from src.strategy.technical_analysis import TechnicalAnalysis
+from src.strategy.technical_analysis import BaseTechnicalAnalysisModule
 from src.exceptions.custom_exceptions import InvalidHistoricalDataIndexError, InvalidStrategyConfigException
 import logging
 
@@ -43,11 +43,13 @@ class Strategy:
 
         :param config: A JSON object holding the strategy configuration defined by the user, which is used to
             dynamically set the logic of the analysis.
-        :return: A TechnicalAnalysis object which may have been dynamically wrapped depending on the config provided.
+        :return: A BaseTechnicalAnalysisModule object which may have been dynamically wrapped depending on the config provided.
         """
 
         # Create a plain technical analysis that has no logic.
-        technical_analysis = TechnicalAnalysis()
+        technical_analysis = BaseTechnicalAnalysisModule()
+
+        chosen_modules = []
 
         for method in config['technicalAnalysis']:
             # Create a module object that has all references to the wrapper classes within it.
@@ -55,8 +57,11 @@ class Strategy:
                                 fromlist=["all"])
 
             analysis_wrapper = getattr(module, method['name'].replace(" ", ""))
-
             technical_analysis = analysis_wrapper(technical_analysis, method['config'])
+
+            chosen_modules.append(method['name'])
+
+        logger.info(f"Analysis modules in use: {chosen_modules}")
 
         # Return the dynamically wrapped technical analysis module.
         return technical_analysis

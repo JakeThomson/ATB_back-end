@@ -1,4 +1,4 @@
-from src.strategy.technical_analysis import BaseTechnicalAnalysisComponent
+from src.strategy.technical_analysis import TechnicalAnalysisDecorator
 import plotly.graph_objects as go
 import pandas as pd
 
@@ -14,19 +14,10 @@ def simple_moving_avg(df, period):
     return res
 
 
-class BollingerBands(BaseTechnicalAnalysisComponent):
+class BollingerBands(TechnicalAnalysisDecorator):
     """ Uses Bollinger Bands indicator to detect a potential mean reversion opportunity.
         Currently only uses the Overbought and Oversold approach.
      """
-
-    def __init__(self, wrapped, config):
-        """ Constructor method for the MovingAverages wrapper class.
-
-        :param wrapped: The technical analysis method that is wrapped by this one.
-        :param config: The configuration set for this analysis method.
-        """
-        self._wrapped = wrapped
-        self.config = config
 
     def analyse_data(self, historical_df):
         """ Analyse the historical data for an opportunity to trade using Bollinger Bands indicator.
@@ -48,16 +39,16 @@ class BollingerBands(BaseTechnicalAnalysisComponent):
         upper_band = sma + (stdev * 2)
         lower_band = sma - (stdev * 2)
 
-        opportunity = self.check_for_opportunity(historical_df, sma, upper_band, lower_band)
+        opportunity = self._check_for_opportunity(historical_df, sma, upper_band, lower_band)
         if opportunity:
             # If the price has just fallen beneath the lower band, then mark as triggered by BB and draw graph.
             historical_df.attrs['triggered_indicators'].append("Bollinger Bands")
-            fig = self.draw_moving_avg_graph(historical_df, fig, sma, upper_band, lower_band)
+            fig = self._draw_figure(historical_df, fig, sma, upper_band, lower_band)
 
         # Return dataframe and figure (if it has been drawn).
         return historical_df, fig
 
-    def check_for_opportunity(self, historical_df, sma, upper_band, lower_band):
+    def _check_for_opportunity(self, historical_df, sma, upper_band, lower_band):
         """ Check for a break out of the lower bound, which indicates a potential trade opportunity.
             Does not check for breakouts from the upper bound, as short-selling is not a feature in the backtester yet.
 
@@ -81,7 +72,7 @@ class BollingerBands(BaseTechnicalAnalysisComponent):
         else:
             return False
 
-    def draw_moving_avg_graph(self, historical_df, fig, sma, upper_band, lower_band):
+    def _draw_figure(self, historical_df, fig, sma, upper_band, lower_band):
         """ Draw the plotly figure to illustrate the analysis that influenced the trade.
 
         :param historical_df: A DataFrame object holding a ticker's historical data.

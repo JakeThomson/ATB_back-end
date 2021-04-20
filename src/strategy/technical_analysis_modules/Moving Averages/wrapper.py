@@ -1,5 +1,5 @@
 from src.exceptions.custom_exceptions import InvalidStrategyConfigException
-from src.strategy.technical_analysis import BaseTechnicalAnalysisComponent
+from src.strategy.technical_analysis import TechnicalAnalysisDecorator
 import plotly.graph_objects as go
 
 
@@ -26,17 +26,8 @@ def exponential_moving_avg(df, period):
     return res
 
 
-class MovingAverages(BaseTechnicalAnalysisComponent):
+class MovingAverages(TechnicalAnalysisDecorator):
     """ Uses moving day average indicator to detect trends. Can use SMA of EMA for any day period. """
-
-    def __init__(self, wrapped, config):
-        """ Constructor method for the MovingAverages wrapper class.
-
-        :param wrapped: The technical analysis method that is wrapped by this one.
-        :param config: The configuration set for this analysis method.
-        """
-        self._wrapped = wrapped
-        self.config = config
 
     def analyse_data(self, historical_df):
         """ Analyse the historical data for an opportunity to trade using moving averages.
@@ -66,16 +57,16 @@ class MovingAverages(BaseTechnicalAnalysisComponent):
             raise InvalidStrategyConfigException(f"MovingAverage indicator type '{self.config['shortTermType']}' is "
                                                  f"unrecognised.")
 
-        opportunity = self.check_for_intersect(long_term, short_term)
+        opportunity = self._check_for_intersect(long_term, short_term)
         if opportunity:
             # If the short-term and long-term have just intersected then mark as triggered by MA and draw graph.
             historical_df.attrs['triggered_indicators'].append("MovingAverages")
-            fig = self.draw_moving_avg_graph(historical_df, fig, long_term, short_term)
+            fig = self._draw_figure(historical_df, fig, long_term, short_term)
 
         # Return dataframe and figure (if it has been drawn).
         return historical_df, fig
 
-    def check_for_intersect(self, long_term, short_term):
+    def _check_for_intersect(self, long_term, short_term):
         """ Check the short-term and long-term lines to see if they have just intersected.
 
         :param long_term: A Series holding the long term moving average.
@@ -96,7 +87,7 @@ class MovingAverages(BaseTechnicalAnalysisComponent):
         else:
             return False
 
-    def draw_moving_avg_graph(self, historical_df, fig, long_term, short_term):
+    def _draw_figure(self, historical_df, fig, long_term, short_term):
         """ Draw the plotly figure to illustrate the analysis that influenced the trade.
 
         :param historical_df: A DataFrame object holding a ticker's historical data.
