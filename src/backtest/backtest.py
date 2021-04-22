@@ -80,7 +80,6 @@ class Backtest:
         trade_handler = TradeHandler(self, tickers)
 
         backtest_start_time = time.time()
-        time.sleep(2)
 
         last_state = "executing"
         while self.backtest_date < self.end_date and self.state == "active":

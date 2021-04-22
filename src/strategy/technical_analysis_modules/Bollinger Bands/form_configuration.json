@@ -1,0 +1,9 @@
+[
+  {
+    "id": "dayPeriod",
+    "label": "Period (days)",
+    "type": "number",
+    "limits": [0, 365],
+    "default": 20
+  }
+]

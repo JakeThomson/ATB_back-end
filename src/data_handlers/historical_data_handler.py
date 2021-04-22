@@ -168,7 +168,7 @@ class HistoricalDataHandler:
         # Iterate through ticker list and download historical data into a sqlite table if it does not already exist.
         for ticker in slice_of_tickers:
 
-            conn = sqlite3.connect('historical_data/historical_data.db')
+            conn = sqlite3.connect('historical_data/historical_data.db', timeout=10)
             c = conn.cursor()
 
             # Get the count of tables with the name == ticker.
@@ -210,13 +210,18 @@ class HistoricalDataHandler:
                     download_from_date = last_date_in_table + dt.timedelta(days=1)
                     download_from_date = date_validator.validate_date(download_from_date)
                     log.debug(f"Updating {ticker} data")
-                    historical_df = web.DataReader(ticker, "yahoo", download_from_date, self.end_date)
                     try:
+                        historical_df = web.DataReader(ticker, "yahoo", download_from_date, self.end_date)
                         if historical_df.index[0] == historical_df.index[1]:
                             historical_df = historical_df.iloc[1:]
                     except IndexError:
-                        # There is only one line
+                        # There is only one line.
                         pass
+                    except KeyError:
+                        # No data was returned from DataReader.
+                        conn.close()
+                        log.error(f"No data avaiblable for {ticker} between {download_from_date.date()} & {self.end_date.date()}")
+                        continue
                     historical_df = historical_df.reset_index().reindex(
                         columns=["Date", "Open", "High", "Low", "Close", "Volume", "Adj Close"])
                     historical_df.columns = ["date", "open", "high", "low", "close", "volume", "adj_close"]
@@ -225,8 +230,8 @@ class HistoricalDataHandler:
                     valid = HistoricalDataValidator(historical_df).validate_data()
                     historical_df.to_sql(ticker, conn, if_exists='append', index=False)
                     c.execute("""UPDATE available_tickers
-                                                    SET valid=?
-                                                        WHERE ticker=? """, [valid, ticker])
+                                                    SET valid=?, last_date=?
+                                                        WHERE ticker=? """, [valid, self.end_date, ticker])
                     conn.commit()
             conn.close()
 
@@ -236,7 +241,7 @@ class HistoricalDataHandler:
         :param tickers: A list of company tickers.
         :return: none
         """
-        conn = sqlite3.connect('historical_data/historical_data.db')
+        conn = sqlite3.connect('historical_data/historical_data.db', timeout=10)
         c = conn.cursor()
         # Get the count of tables with the name == ticker
         exists = \
@@ -245,7 +250,7 @@ class HistoricalDataHandler:
                 .fetchone()[0]
         # If the table does not exist in SQLite, then create it.
         if not exists:
-            c.execute(f'''CREATE TABLE available_tickers
+            c.execute('''CREATE TABLE available_tickers
                              ([ticker] text, [valid] boolean, [market_index] text, [first_date] datetime, 
                               [last_date] datetime)''')
         conn.commit()

@@ -1,17 +1,16 @@
-import threading
-
 from src.data_handlers.historical_data_handler import HistoricalDataHandler
 from src.trades import graph_composer
 from src.exceptions.custom_exceptions import TradeCreationError, TradeAnalysisError, InvalidHistoricalDataIndexError
-
 from src.data_handlers import request_handler
 from src.trades.trade import Trade
 from src.strategy import strategy
+
 import datetime as dt
 import math
 import logging
 import random
 import time
+import threading
 
 logger = logging.getLogger("trade_handler")
 

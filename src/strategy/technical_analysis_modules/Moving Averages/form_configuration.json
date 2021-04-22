@@ -1,0 +1,30 @@
+[
+  {
+    "id": "shortTermType",
+    "label": "Short-term MA type",
+    "type": "multiSelect",
+    "options": ["SMA", "EMA"],
+    "default": "SMA"
+  },
+  {
+    "id": "shortTermDayPeriod",
+    "label": "Short-term period (days)",
+    "type": "number",
+    "limits": [0, 365],
+    "default": 20
+  },
+  {
+    "id": "longTermType",
+    "label": "Long-term MA type",
+    "type": "multiSelect",
+    "options": ["SMA", "EMA"],
+    "default": "SMA"
+  },
+  {
+    "id": "longTermDayPeriod",
+    "label": "Long-term period (days)",
+    "type": "number",
+    "limits": [0, 365],
+    "default": 50
+  }
+]

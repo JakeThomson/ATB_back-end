@@ -3,9 +3,19 @@ import docx
 from docx.opc.exceptions import PackageNotFoundError
 import logging
 from dotenv import dotenv_values
+import os.path
+import pandas as pd
 
 
 def print_deadline_reminder():
+    if os.path.isfile("historical_data/word_count.csv"):
+        df = pd.read_csv("historical_data/word_count.csv")
+        df = df.set_index("date")
+    else:
+        df = pd.DataFrame(columns=["date", "words", "target"])
+        df = df.set_index("date")
+
+
     report_path = dotenv_values()['REPORT_PATH']
 
     project_start_date = dt.datetime(2021, 2, 2)
@@ -38,7 +48,7 @@ def print_deadline_reminder():
 
         string = '\n'.join(full_text)
         string = string.replace('\n', ' ')
-        word_count = len(list(filter(None, string.split(' '))))
+        word_count = len(list(filter(None, string.split(' ')))) - 754
 
         total_difference = deadline - project_start_date
         report_difference = deadline - report_start_date
@@ -52,6 +62,8 @@ def print_deadline_reminder():
         logging.info(f"Time progress since started report: {report_time_progress_pct}%")
         logging.info(f"Target word count: {target_word_count} ({round(target_word_count / word_limit * 100, 2)}%)")
         logging.info(f"Current word count: {word_count} ({round(word_count / word_limit * 100, 2)}%)")
+        df.loc[dt.datetime.strftime(current_date, "%d/%m/%Y")] = (word_count, target_word_count)
+        df.to_csv("historical_data/word_count.csv")
         if word_count >= target_word_count:
             logging.info(f"YOU ARE {word_count - target_word_count} WORDS ABOVE TARGET")
             logging.info("*-----------------------------------------------------------*\n\n")

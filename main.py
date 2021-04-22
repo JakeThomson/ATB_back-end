@@ -10,6 +10,8 @@ import logging as log
 import time
 from signal import signal, SIGABRT, SIGBREAK, SIGILL, SIGINT, SIGSEGV, SIGTERM
 from threading import Thread
+import json
+import os
 
 # Set up socket connection with the data-access api and the logging configurations.
 sio = socketio.Client()
@@ -21,6 +23,7 @@ backtest_controller = None
 def connect():
     """ Called when the socket connection is first made. """
     log.info("Socket connected successfully")
+    sio.emit("sendIdentifier", "backtest")
     time.sleep(1)
     request_handler.patch("/backtest_properties/available", {"backtestOnline": 1})
     time.sleep(1)
@@ -36,6 +39,21 @@ def connect_error(e):
 def disconnect():
     """ Called when the socket connection has been terminated (when the backend is shutting down). """
     log.info("Socket disconnected")
+
+
+@sio.on('getAnalysisModules')
+def get_analysis_modules(req):
+    log.info("Server requested analysis modules")
+    path = "./src/strategy/technical_analysis_modules/"
+    analysis_modules = [item for item in os.listdir(path) if os.path.isdir(os.path.join(path, item))]
+    result = {}
+
+    for module in analysis_modules:
+        with open(f'{path}/{module}/form_configuration.json') as f:
+            data = json.load(f)
+            result[module] = data
+
+    return result
 
 
 def handle_exit(signum, frame):
@@ -54,11 +72,10 @@ def handle_exit(signum, frame):
 
 # Main code
 if __name__ == '__main__':
-
-    deadline_reminder.print_deadline_reminder()
+    # deadline_reminder.print_deadline_reminder()
 
     # Signal handlers listen for events that attempt to kill the program (CTRL+C, PyCharm 'STOP', etc.).
-    # You mustv have 'kill.windows.processes.softly' set to true in PyCharm registry.
+    # IMPORTANT!! If using PyCharm, you must have 'kill.windows.processes.softly' set to true in the registry.
     for sig in (SIGABRT, SIGBREAK, SIGILL, SIGINT, SIGSEGV, SIGTERM):
         signal(sig, handle_exit)
 
@@ -70,7 +87,7 @@ if __name__ == '__main__':
     start_date = dt.datetime(2009, 1, 1)
     hist_data_mgr = HistoricalDataHandler(start_date=start_date, market_index="S&P500", max_processes=7)
     tickers = hist_data_mgr.get_tickers()
-    # hist_data_mgr.multiprocess_data_download(tickers)
+    hist_data_mgr.multiprocess_data_download(tickers)
 
     backtest_controller = BacktestController(sio, tickers)
 

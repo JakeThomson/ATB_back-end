@@ -1,5 +1,6 @@
+from src.data_handlers import request_handler
 from src.data_handlers.historical_data_handler import HistoricalDataHandler, split_list
-from src.strategy.technical_analysis import TechnicalAnalysis
+from src.strategy.technical_analysis import BaseTechnicalAnalysisModule
 from src.exceptions.custom_exceptions import InvalidHistoricalDataIndexError, InvalidStrategyConfigException
 import logging
 
@@ -14,26 +15,7 @@ def create_strategy(backtest):
     """
 
     # Manual configuration for now, will eventually be set by the UI.
-    input_config = {
-        "lookbackRangeWeeks": 24,
-        "analysisTechniques": [
-            {
-                "name": "MovingAverages",
-                "config": {
-                    "shortTermType": "SMA",
-                    "shortTermDayPeriod": 20,
-                    "longTermType": "SMA",
-                    "longTermDayPeriod": 50,
-                }
-            },
-            {
-                "name": "BollingerBands",
-                "config": {
-                    "dayPeriod": 20
-                }
-            }
-        ]
-    }
+    input_config = request_handler.get("/strategies").json()
 
     # Create the strategy using the configuration.
     strategy = Strategy(input_config, backtest)
@@ -61,23 +43,25 @@ class Strategy:
 
         :param config: A JSON object holding the strategy configuration defined by the user, which is used to
             dynamically set the logic of the analysis.
-        :return: A TechnicalAnalysis object which may have been dynamically wrapped depending on the config provided.
+        :return: A BaseTechnicalAnalysisModule object which may have been dynamically wrapped depending on the config provided.
         """
 
-        # Create a module object that has all references to the wrapper classes within it.
-        wrappers = __import__('src.strategy.technical_analysis_wrappers',
-                              fromlist=[d['name'] for d in config['analysisTechniques']])
-
         # Create a plain technical analysis that has no logic.
-        technical_analysis = TechnicalAnalysis()
+        technical_analysis = BaseTechnicalAnalysisModule()
 
-        # Iterate through all methods specified in the config.
-        for method in config['analysisTechniques']:
-            # Get a reference to the wrapper class that matches the method name provided in the config.
-            analysis_wrapper = getattr(wrappers, method['name'])
-            # Wrap the technical analysis object with the wrapper that the reference object points to, also passing the
-            # config settings provided for that method.
+        chosen_modules = []
+
+        for method in config['technicalAnalysis']:
+            # Create a module object that has all references to the wrapper classes within it.
+            module = __import__(f'src.strategy.technical_analysis_modules.{method["name"]}.wrapper',
+                                fromlist=["all"])
+
+            analysis_wrapper = getattr(module, method['name'].replace(" ", ""))
             technical_analysis = analysis_wrapper(technical_analysis, method['config'])
+
+            chosen_modules.append(method['name'])
+
+        logger.info(f"Analysis modules in use: {chosen_modules}")
 
         # Return the dynamically wrapped technical analysis module.
         return technical_analysis
