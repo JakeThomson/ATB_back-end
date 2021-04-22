@@ -48,7 +48,7 @@ def print_deadline_reminder():
 
         string = '\n'.join(full_text)
         string = string.replace('\n', ' ')
-        word_count = len(list(filter(None, string.split(' '))))
+        word_count = len(list(filter(None, string.split(' ')))) - 754
 
         total_difference = deadline - project_start_date
         report_difference = deadline - report_start_date
