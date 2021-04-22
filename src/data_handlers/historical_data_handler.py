@@ -230,8 +230,8 @@ class HistoricalDataHandler:
                     valid = HistoricalDataValidator(historical_df).validate_data()
                     historical_df.to_sql(ticker, conn, if_exists='append', index=False)
                     c.execute("""UPDATE available_tickers
-                                                    SET valid=?
-                                                        WHERE ticker=? """, [valid, ticker])
+                                                    SET valid=?, last_date=?
+                                                        WHERE ticker=? """, [valid, self.end_date, ticker])
                     conn.commit()
             conn.close()
 
