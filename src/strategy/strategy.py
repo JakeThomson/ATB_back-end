@@ -15,7 +15,7 @@ def create_strategy(backtest):
     """
 
     # Manual configuration for now, will eventually be set by the UI.
-    input_config = request_handler.get("/strategies").json()
+    input_config = request_handler.get(f"/strategies/{backtest.strategyId}").json()
 
     # Create the strategy using the configuration.
     strategy = Strategy(input_config, backtest)
