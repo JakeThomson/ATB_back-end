@@ -25,7 +25,7 @@ def connect():
     log.info("Socket connected successfully")
     sio.emit("sendIdentifier", "backtest")
     time.sleep(1)
-    request_handler.patch("/backtest_properties/available", {"backtestOnline": 1})
+    request_handler.patch("/backtests/available", {"backtestOnline": 1})
     time.sleep(1)
 
 
@@ -63,7 +63,7 @@ def handle_exit(signum, frame):
         thread.start()
         thread.join()
 
-    request_handler.patch("/backtest_properties/available", {"backtestOnline": 0})
+    request_handler.patch("/backtests/available", {"backtestOnline": 0})
     time.sleep(0.5)
     sio.disconnect()
     log.info("Back-end shutting down")
