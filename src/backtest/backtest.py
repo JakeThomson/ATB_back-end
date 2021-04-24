@@ -67,7 +67,7 @@ class Backtest:
             "backtest_date": self.backtest_date
         }
 
-        request_handler.patch("/backtests/date", body)
+        request_handler.patch(f"/backtests/{self.backtest_id}/date", body)
 
     def start_backtest(self, tickers):
         """ Holds the logic for the backtest loop:

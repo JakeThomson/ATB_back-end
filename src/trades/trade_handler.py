@@ -138,7 +138,7 @@ class TradeHandler:
         # object for easy future reference.
         response = request_handler.post(f"/trades/{self.backtest.backtest_id}", json_trade)
         trade.trade_id = response.json().get("trade_id")
-        request_handler.put("/backtests", self.backtest.to_JSON_serializable())
+        request_handler.put(f"/backtests/{self.backtest.backtest_id}", self.backtest.to_JSON_serializable())
         self.open_trades.append(trade)
 
     def close_trade(self, trade):
@@ -201,4 +201,4 @@ class TradeHandler:
         request_handler.put(f"/trades/{self.backtest.backtest_id}",
                             {"open_trades": json_open_trades_array, "closed_trades": json_closed_trades_array})
         # Update backtest properties.
-        request_handler.put("/backtests", self.backtest.to_JSON_serializable())
+        request_handler.put(f"/backtests/{self.backtest.backtest_id}", self.backtest.to_JSON_serializable())
