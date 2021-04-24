@@ -33,7 +33,7 @@ class Backtest:
         self.sl_limit = settings['stopLoss']
         self.market_index = settings['marketIndex']
         self.strategy_id = settings['strategyId']
-        self.is_paused = request_handler.get("/backtests/is_paused").json().get("isPaused")
+        self.is_paused = request_handler.get("/backtest_settings/is_paused").json().get("isPaused")
         self.total_profit_loss_graph = create_initial_profit_loss_figure(self.start_date,
                                                                          self.start_balance)
         self.state = "active"
