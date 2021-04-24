@@ -13,7 +13,7 @@ import os
 import re
 import pickle
 import time
-import multiprocessing
+import threading
 import sqlite3
 
 
@@ -262,7 +262,7 @@ class HistoricalDataHandler:
 
         # Create a number of processes to download data concurrently, to speed up the process.
         for process_id in range(0, self.max_processes):
-            download_process = multiprocessing.Process(target=self.download_historical_data_to_sqlite,
+            download_process = threading.Thread(target=self.download_historical_data_to_sqlite,
                                                       args=(tickers, process_id))
             download_processes.append(download_process)
             download_process.start()

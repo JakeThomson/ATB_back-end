@@ -15,7 +15,7 @@ def create_strategy(backtest):
     """
 
     # Manual configuration for now, will eventually be set by the UI.
-    input_config = request_handler.get("/strategies").json()
+    input_config = request_handler.get(f"/strategies/{backtest.strategy_id}").json()
 
     # Create the strategy using the configuration.
     strategy = Strategy(input_config, backtest)
@@ -61,7 +61,7 @@ class Strategy:
 
             chosen_modules.append(method['name'])
 
-        logger.info(f"Analysis modules in use: {chosen_modules}")
+        logger.info(f"Using strategy '{config['strategyName']}' with modules {chosen_modules}")
 
         # Return the dynamically wrapped technical analysis module.
         return technical_analysis

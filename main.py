@@ -79,15 +79,15 @@ if __name__ == '__main__':
     for sig in (SIGABRT, SIGBREAK, SIGILL, SIGINT, SIGSEGV, SIGTERM):
         signal(sig, handle_exit)
 
-    # Read command line argument to determine what environment URL to hit for the data access api.
-    environment = str(sys.argv[1]) if len(sys.argv) == 2 else "prod"
-    request_handler.set_environment(sio, environment)
-
     # Download/update historical data.
     start_date = dt.datetime(2009, 1, 1)
     hist_data_mgr = HistoricalDataHandler(start_date=start_date, market_index="S&P500", max_processes=7)
     tickers = hist_data_mgr.get_tickers()
-    hist_data_mgr.multiprocess_data_download(tickers)
+    # hist_data_mgr.multiprocess_data_download(tickers)
+
+    # Read command line argument to determine what environment URL to hit for the data access api.
+    environment = str(sys.argv[1]) if len(sys.argv) == 2 else "prod"
+    request_handler.set_environment(sio, environment)
 
     backtest_controller = BacktestController(sio, tickers)
 

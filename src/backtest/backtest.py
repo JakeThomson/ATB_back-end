@@ -32,6 +32,7 @@ class Backtest:
         self.tp_limit = settings['takeProfit']
         self.sl_limit = settings['stopLoss']
         self.market_index = settings['marketIndex']
+        self.strategy_id = settings['strategyId']
         self.is_paused = request_handler.get("/backtest_properties/is_paused").json().get("isPaused")
         self.total_profit_loss_graph = create_initial_profit_loss_figure(self.start_date,
                                                                          self.start_balance)
@@ -77,7 +78,11 @@ class Backtest:
         :return: none
         """
         logger.info("*---------------------- Starting backtest ----------------------*")
-        trade_handler = TradeHandler(self, tickers)
+        if self.strategy_id is None:
+            logger.warning("No strategy selected to run.")
+            self.state = "stopping"
+        else:
+            trade_handler = TradeHandler(self, tickers)
 
         backtest_start_time = time.time()
 
