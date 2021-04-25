@@ -41,10 +41,11 @@ class Backtest:
         body = {
             "start_date": str(self.start_date),
             "start_balance": self.start_balance,
-            "total_profit_loss_graph": self.total_profit_loss_graph
+            "total_profit_loss_graph": self.total_profit_loss_graph,
+            "strategy_id": self.strategy_id
         }
 
-        self.backtest_id = request_handler.post("/backtests/initialise", body).json()['backtestId']
+        self.backtest_id = request_handler.post("/backtests", body).json()['backtestId']
 
     def to_JSON_serializable(self):
         backtest_dict = copy.deepcopy(self.__dict__)
@@ -126,10 +127,11 @@ class Backtest:
         backtest_time_taken = dt.timedelta(seconds=(time.time() - backtest_start_time)).total_seconds()
         if self.state == "active":
             logger.info(f"Backtest completed in {str(dt.timedelta(seconds=backtest_time_taken))}")
+            request_handler.put(f"/backtests/{self.backtest_id}/finalise", {})
         else:
             logger.info(f"Backtest stopped after {str(dt.timedelta(seconds=backtest_time_taken))}")
+        # Delete self in main thread by setting state flag
         self.state = "inactive"
-        # del self
 
 
 class BacktestController:
