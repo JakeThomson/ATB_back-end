@@ -33,7 +33,7 @@ class Backtest:
         self.sl_limit = settings['stopLoss']
         self.market_index = settings['marketIndex']
         self.strategy_id = settings['strategyId']
-        self.is_paused = request_handler.get("/backtest_properties/is_paused").json().get("isPaused")
+        self.is_paused = request_handler.get("/backtest_settings/is_paused").json().get("isPaused")
         self.total_profit_loss_graph = create_initial_profit_loss_figure(self.start_date,
                                                                          self.start_balance)
         self.state = "active"
@@ -41,10 +41,11 @@ class Backtest:
         body = {
             "start_date": str(self.start_date),
             "start_balance": self.start_balance,
-            "total_profit_loss_graph": self.total_profit_loss_graph
+            "total_profit_loss_graph": self.total_profit_loss_graph,
+            "strategy_id": self.strategy_id
         }
 
-        request_handler.put("/backtest_properties/initialise", body)
+        self.backtest_id = request_handler.post("/backtests", body).json()['backtestId']
 
     def to_JSON_serializable(self):
         backtest_dict = copy.deepcopy(self.__dict__)
@@ -67,7 +68,7 @@ class Backtest:
             "backtest_date": self.backtest_date
         }
 
-        request_handler.patch("/backtest_properties/date", body)
+        request_handler.patch(f"/backtests/{self.backtest_id}/date", body)
 
     def start_backtest(self, tickers):
         """ Holds the logic for the backtest loop:
@@ -126,10 +127,11 @@ class Backtest:
         backtest_time_taken = dt.timedelta(seconds=(time.time() - backtest_start_time)).total_seconds()
         if self.state == "active":
             logger.info(f"Backtest completed in {str(dt.timedelta(seconds=backtest_time_taken))}")
+            request_handler.put(f"/backtests/{self.backtest_id}/finalise", {})
         else:
             logger.info(f"Backtest stopped after {str(dt.timedelta(seconds=backtest_time_taken))}")
+        # Delete self in main thread by setting state flag
         self.state = "inactive"
-        # del self
 
 
 class BacktestController:
@@ -150,6 +152,13 @@ class BacktestController:
             self.get_settings()
             self.stop_backtest()
             self.start_backtest()
+
+        @self.socket.on('stopBacktest')
+        def manual_stop_backtest(strategy_id, msg):
+            """ Stops the current backtest if the strategy in use matches the provided. """
+            if self.backtest.strategy_id == strategy_id:
+                self.stop_backtest()
+                logger.info(msg)
 
         self.get_settings()
         thread = Thread(target=self.start_backtest)

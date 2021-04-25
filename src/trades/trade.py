@@ -1,8 +1,9 @@
 import copy
 
 class Trade:
-    def __init__(self, ticker, historical_data, buy_date, buy_price, share_qty, investment_total, take_profit, stop_loss, triggered_indicators):
+    def __init__(self, backtest_id, ticker, historical_data, buy_date, buy_price, share_qty, investment_total, take_profit, stop_loss, triggered_indicators):
         self.trade_id = None
+        self.backtest_id = backtest_id,
         self.ticker = ticker
         self.historical_data = historical_data
         self.buy_date = buy_date
