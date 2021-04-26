@@ -98,34 +98,39 @@ class MovingAverages(TechnicalAnalysisDecorator):
         :return: A plotly figure object.
         """
 
-        start_date_range = historical_df.index[-60]
-        end_date_range = historical_df.index[-1] + np.timedelta64(2,'D')
-
+        range_days = 30
+        start_index_offset = len(historical_df.index) - 50
+        start_date_range = historical_df.index[-range_days]
+        end_date_range = historical_df.index[-1] + np.timedelta64(4, 'D')
+        y_min = min(np.concatenate((historical_df['low'][-range_days:].values, long_term[-range_days:].values, short_term[-range_days:].values)))
+        y_max = max(np.concatenate((historical_df['high'][-range_days:].values, long_term[-range_days:].values, short_term[-range_days:].values)))
+        y_range_offset = (y_max-y_min)*0.15
         # If the figure has not yet been drawn, then draw the foundation candlestick chart.
         if fig is None:
-            fig = go.Figure(data=[go.Candlestick(x=historical_df.index, open=historical_df['open'],
-                                                 high=historical_df['high'], low=historical_df['low'],
-                                                 close=historical_df['close'],
-                                                 name=f"{historical_df.attrs['ticker']} Stock")])
+            fig = go.Figure(data=[go.Candlestick(x=historical_df.index[-start_index_offset:], open=historical_df['open'][-start_index_offset:],
+                                                 high=historical_df['high'][-start_index_offset:], low=historical_df['low'][-start_index_offset:],
+                                                 close=historical_df['close'][-start_index_offset:], line=dict(width=1.2),
+                                                 name="Stock Price")])
             fig.update_layout(height=250, width=460, template="simple_white",
                               legend=dict(orientation="h", yanchor="top", y=1.12, xanchor="center", x=0.5,
                                           itemclick="toggleothers",
                                           itemdoubleclick="toggle", ),
                               margin=dict(t=10, l=0, r=0, b=0), plot_bgcolor='rgba(0,0,0,0)',
-                              xaxis=dict(rangebreaks=[dict(bounds=['sat', 'mon'])], showline=True, linewidth=2,
+                              xaxis=dict(rangebreaks=[dict(bounds=['sat', 'mon'])], showline=True, linewidth=1,
                                          range=[start_date_range, end_date_range], tickcolor="rgba(0,0,0,0.3)",
-                                         linecolor="rgba(0,0,0,0.3)", showgrid=False, gridcolor="rgba(0,0,0,0.1)"),
-                              yaxis=dict(showline=True, linecolor="rgba(0,0,0,0.3)", linewidth=2, showgrid=True,
-                                         gridcolor="rgba(0,0,0,0.08)", tickcolor="rgba(0,0,0,0.3)", layer="below traces"))
+                                         linecolor="rgba(0,0,0,0.3)", showgrid=False),
+                              yaxis=dict(showline=True, linecolor="rgba(0,0,0,0.3)", linewidth=1, showgrid=True,
+                                         gridcolor="rgba(0,0,0,0.08)", tickcolor="rgba(0,0,0,0.3)",
+                                         layer="below traces", range=[y_min-y_range_offset, y_max+y_range_offset]))
 
         # Add the short-term/long-term MA lines to the figure.
         fig.add_traces([
-            go.Scatter(x=historical_df.index, y=long_term,
+            go.Scatter(x=historical_df.index[-start_index_offset:], y=long_term[-start_index_offset:], hoverinfo="skip",
                        name=f"{self.config['longTermDayPeriod']}-day {self.config['longTermType']}",
-                       line=dict(shape="spline", smoothing=1.3)),
-            go.Scatter(x=historical_df.index, y=short_term,
+                       line=dict(shape="spline", smoothing=1.3, width=1.3, color="#59b6f0")),
+            go.Scatter(x=historical_df.index[-start_index_offset:], y=short_term[-start_index_offset:], hoverinfo="skip",
                        name=f"{self.config['shortTermDayPeriod']}-day {self.config['shortTermType']}",
-                       line=dict(shape="spline", smoothing=1.3))
+                       line=dict(shape="spline", smoothing=1.3, width=1.3, color="#3f6deb"))
         ])
         # Update the figure with relevant information.
         fig.update_layout(

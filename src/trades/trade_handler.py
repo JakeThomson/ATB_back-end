@@ -11,6 +11,7 @@ import logging
 import random
 import time
 import threading
+import plotly.graph_objects as go
 
 logger = logging.getLogger("trade_handler")
 
@@ -41,8 +42,8 @@ class TradeHandler:
         # Create a number of threads to download data concurrently, to speed up the process.
         for thread_id in range(0, self.max_strategy_threads):
             download_thread = threading.Thread(target=self.strategy.execute,
-                                                      args=(self.tickers, potential_trades,
-                                                            self.max_strategy_threads, thread_id))
+                                               args=(self.tickers, potential_trades,
+                                                     self.max_strategy_threads, thread_id))
             download_threads.append(download_thread)
             download_thread.start()
 
@@ -109,6 +110,11 @@ class TradeHandler:
         """
         buy_price, qty, investment_total = self.calculate_num_shares_to_buy(interesting_df)
         tp, sl = self.calculate_tp_sl(qty, investment_total)
+        analysis_fig.add_trace(go.Scatter(x=[interesting_df.index[-1]], y=[buy_price], showlegend=False,
+                                          hoverinfo="skip", mode="markers",
+                                          marker=dict(color=["lawngreen", "orangered"], symbol=["triangle-up", "triangle-down"], size=10,
+                                                       line=dict(color=["darkgreen", "darkred"], width=1.5))))
+
         trade = Trade(backtest_id=self.backtest.backtest_id,
                       ticker=interesting_df.attrs['ticker'],
                       historical_data=interesting_df,
@@ -150,7 +156,7 @@ class TradeHandler:
         :return: none
         """
         logger.info(f"Closing trade {trade.ticker} with {'profit' if trade.profit_loss > 0 else 'loss'} "
-                    f"of {round(trade.profit_loss,2)}, which was triggered by {', '.join(trade.triggered_indicators)}")
+                    f"of {round(trade.profit_loss, 2)}, which was triggered by {', '.join(trade.triggered_indicators)}")
         trade.sell_price = trade.current_price
         trade.sell_date = self.backtest.backtest_date
         self.backtest.available_balance += trade.sell_price * trade.share_qty
@@ -176,7 +182,8 @@ class TradeHandler:
         for i, trade in enumerate(self.open_trades):
             # Get the respective day's data for the targeted trade from the SQLite tables and append to historical
             # data, trimming off the first column to keep the dataframe short.
-            new_data = self.hist_data_handler.get_hist_dataframe(trade.ticker, self.backtest.backtest_date, num_weeks=0, num_days=1)
+            new_data = self.hist_data_handler.get_hist_dataframe(trade.ticker, self.backtest.backtest_date, num_weeks=0,
+                                                                 num_days=1)
             trade.historical_data = trade.historical_data[1:].append(new_data)
             trade.current_price = trade.historical_data['close'].iloc[-1]
             trade.profit_loss = (trade.current_price * trade.share_qty) - trade.investment_total

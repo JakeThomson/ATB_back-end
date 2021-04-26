@@ -30,4 +30,5 @@ class Trade:
         trade_dict['historical_data'].index = trade_dict['historical_data'].index.strftime('%Y-%m-%d %H:%M:%S').copy()
         trade_dict['historical_data'].reset_index(level="date", inplace=True)
         trade_dict['historical_data'] = trade_dict['historical_data'].to_dict(orient="list")
+        trade_dict['figure'] = trade_dict['figure'].to_json()
         return trade_dict

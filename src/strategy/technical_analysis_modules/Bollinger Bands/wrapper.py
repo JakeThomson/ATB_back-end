@@ -84,15 +84,23 @@ class BollingerBands(TechnicalAnalysisDecorator):
         :return: A plotly figure object.
         """
 
-        start_date_range = historical_df.index[-60]
-        end_date_range = historical_df.index[-1] + np.timedelta64(2,'D')
+        range_days = 30
+        start_index_offset = len(historical_df.index) - 20
+        start_date_range = historical_df.index[-range_days]
+        end_date_range = historical_df.index[-1] + np.timedelta64(4, 'D')
+        y_min = min(np.concatenate((historical_df['low'][-range_days:].values, lower_band[-range_days:].values)))
+        y_max = max(np.concatenate((historical_df['high'][-range_days:].values, upper_band[-range_days:].values)))
+        y_range_offset = (y_max - y_min) * 0.15
 
         # If the figure has not yet been drawn, then draw the foundation candlestick chart.
         if fig is None:
-            fig = go.Figure(data=[go.Candlestick(x=historical_df.index, open=historical_df['open'],
-                                                 high=historical_df['high'], low=historical_df['low'],
-                                                 close=historical_df['close'],
-                                                 name=f"{historical_df.attrs['ticker']} Stock")])
+            fig = go.Figure(data=[go.Candlestick(x=historical_df.index[-start_index_offset:],
+                                                 open=historical_df['open'][-start_index_offset:],
+                                                 high=historical_df['high'][-start_index_offset:],
+                                                 low=historical_df['low'][-start_index_offset:],
+                                                 close=historical_df['close'][-start_index_offset:],
+                                                 line=dict(width=1.2),
+                                                 name="Stock Price")])
             fig.update_layout(height=250, width=460, template="simple_white",
                               legend=dict(orientation="h", yanchor="top", y=1.12, xanchor="center", x=0.5,
                                           itemclick="toggleothers",
@@ -103,12 +111,12 @@ class BollingerBands(TechnicalAnalysisDecorator):
                                          linecolor="rgba(0,0,0,0.3)", showgrid=False),
                               yaxis=dict(showline=True, linecolor="rgba(0,0,0,0.3)", linewidth=1, showgrid=True,
                                          gridcolor="rgba(0,0,0,0.08)", tickcolor="rgba(0,0,0,0.3)",
-                                         layer="below traces"))
+                                         layer="below traces", range=[y_min - y_range_offset, y_max + y_range_offset]))
 
         # Add the upper/lower Bollinger Bands to the figure with the area between filled in.
         fig.add_trace(go.Scatter(
-            x=historical_df.index.append(historical_df.index[::-1]),
-            y=pd.concat([upper_band, lower_band[::-1]]),
+            x=historical_df.index.append(historical_df.index[::-1])[-start_index_offset:],
+            y=pd.concat([upper_band[-start_index_offset:], lower_band[::-1][-start_index_offset:]]),
             fill='toself',
             fillcolor='rgba(126, 163, 204, 0.15)',
             line=dict(color="rgb(126, 163, 204)"),
@@ -118,7 +126,7 @@ class BollingerBands(TechnicalAnalysisDecorator):
 
         # Add the SMA line to the figure.
         fig.add_trace(go.Scatter(
-            x=historical_df.index, y=sma, name=f"{self.config['dayPeriod']}-day SMA",
+            x=historical_df.index[-start_index_offset:], y=sma, name=f"{self.config['dayPeriod']}-day SMA",
             line=dict(shape="spline", smoothing=1.3)
         ))
 
