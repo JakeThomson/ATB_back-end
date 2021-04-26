@@ -101,7 +101,7 @@ class MovingAverages(TechnicalAnalysisDecorator):
         range_days = 30
         start_index_offset = len(historical_df.index) - 50
         start_date_range = historical_df.index[-range_days]
-        end_date_range = historical_df.index[-1] + np.timedelta64(4, 'D')
+        end_date_range = historical_df.index[-1] + np.timedelta64(7, 'D')
         y_min = min(np.concatenate((historical_df['low'][-range_days:].values, long_term[-range_days:].values, short_term[-range_days:].values)))
         y_max = max(np.concatenate((historical_df['high'][-range_days:].values, long_term[-range_days:].values, short_term[-range_days:].values)))
         y_range_offset = (y_max-y_min)*0.15
@@ -112,9 +112,7 @@ class MovingAverages(TechnicalAnalysisDecorator):
                                                  close=historical_df['close'][-start_index_offset:], line=dict(width=1.2),
                                                  name="Stock Price")])
             fig.update_layout(height=250, width=460, template="simple_white",
-                              legend=dict(orientation="h", yanchor="top", y=1.12, xanchor="center", x=0.5,
-                                          itemclick="toggleothers",
-                                          itemdoubleclick="toggle", ),
+                              legend=dict(orientation="h", yanchor="top", y=1.12, xanchor="center", x=0.5, font_size=10),
                               margin=dict(t=10, l=0, r=0, b=0), plot_bgcolor='rgba(0,0,0,0)',
                               xaxis=dict(rangebreaks=[dict(bounds=['sat', 'mon'])], showline=True, linewidth=1,
                                          range=[start_date_range, end_date_range], tickcolor="rgba(0,0,0,0.3)",

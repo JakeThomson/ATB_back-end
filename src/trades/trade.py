@@ -19,7 +19,7 @@ class Trade:
         self.take_profit = take_profit
         self.stop_loss = stop_loss
         self.triggered_indicators = triggered_indicators
-        self.priceGaugeFigure = {"graph": "placeholder"}
+        self.simpleFigure = {"graph": "placeholder"}
         self.figure = figure
         self.figure_pct = 0
 

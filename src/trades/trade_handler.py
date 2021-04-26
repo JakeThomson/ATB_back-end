@@ -12,6 +12,7 @@ import random
 import time
 import threading
 import plotly.graph_objects as go
+import numpy as np
 
 logger = logging.getLogger("trade_handler")
 
@@ -110,10 +111,28 @@ class TradeHandler:
         """
         buy_price, qty, investment_total = self.calculate_num_shares_to_buy(interesting_df)
         tp, sl = self.calculate_tp_sl(qty, investment_total)
-        analysis_fig.add_trace(go.Scatter(x=[interesting_df.index[-1]], y=[buy_price], showlegend=False,
-                                          hoverinfo="skip", mode="markers",
-                                          marker=dict(color=["lawngreen", "orangered"], symbol=["triangle-up", "triangle-down"], size=10,
-                                                       line=dict(color=["darkgreen", "darkred"], width=1.5))))
+        if tp >= analysis_fig.layout.yaxis['range'][1]:
+            analysis_fig.layout.yaxis['range'][1] = tp - analysis_fig.layout.yaxis['range'][1]
+        if sl <= analysis_fig.layout.yaxis['range'][0]:
+            analysis_fig.layout.yaxis['range'][0] = tp - analysis_fig.layout.yaxis['range'][0]
+
+        print(analysis_fig.layout.yaxis)
+        analysis_fig.add_traces([go.Scatter(x=[interesting_df.index[-1]], y=[buy_price], showlegend=False,
+                                            hoverinfo="skip", mode="markers",
+                                            marker=dict(color=["lawngreen", "orangered"],
+                                                        symbol=["triangle-up", "triangle-down"], size=10,
+                                                        line=dict(color=["darkgreen", "darkred"], width=1.5))),
+                                 go.Scatter(
+                                     x=[interesting_df.index[-2], interesting_df.index[-2] + np.timedelta64(7, 'D')],
+                                     y=[tp, tp], showlegend=True,
+                                     hoverinfo="skip", mode="lines", name="TP/SL", legendgroup="tp/sl",
+                                     line=dict(color="rgba(0, 100, 0, 0.5)", dash="dot", width=1.3)),
+                                 go.Scatter(
+                                     x=[interesting_df.index[-2], interesting_df.index[-2] + np.timedelta64(7, 'D')],
+                                     y=[sl, sl], showlegend=False,
+                                     hoverinfo="skip", mode="lines", name="TP/SL", legendgroup="tp/sl",
+                                     line=dict(color="rgba(1000, 0, 0, 0.5)", dash="dot", width=1.3)),
+                                 ])
 
         trade = Trade(backtest_id=self.backtest.backtest_id,
                       ticker=interesting_df.attrs['ticker'],
@@ -127,7 +146,7 @@ class TradeHandler:
                       triggered_indicators=interesting_df.attrs['triggered_indicators'],
                       figure=analysis_fig)
         # Draws the open trade graph using the new trade object.
-        trade.priceGaugeFigure, trade.figure_pct = graph_composer.draw_open_trade_graph(trade)
+        trade.simpleFigure, trade.figure_pct = graph_composer.draw_open_trade_graph(trade)
         return trade
 
     def make_trade(self, trade):
@@ -188,7 +207,7 @@ class TradeHandler:
             trade.current_price = trade.historical_data['close'].iloc[-1]
             trade.profit_loss = (trade.current_price * trade.share_qty) - trade.investment_total
             trade.profit_loss_pct = (trade.profit_loss / trade.investment_total) * 100
-            trade.priceGaugeFigure, trade.figure_pct = graph_composer.draw_open_trade_graph(trade)
+            trade.simpleFigure, trade.figure_pct = graph_composer.draw_open_trade_graph(trade)
 
             if trade.current_price > trade.take_profit or trade.current_price < trade.stop_loss:
                 # Close the trade
