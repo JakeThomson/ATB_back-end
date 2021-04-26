@@ -111,9 +111,9 @@ class Backtest:
                 # Try to invest in new stocks, move to the next day if nothing good is found or if balance is too low.
                 try:
                     # Select the stock that has the most confidence from the analysis.
-                    interesting_df, fig = trade_handler.analyse_historical_data()
+                    interesting_df, analysis_fig = trade_handler.analyse_historical_data()
                     # Go to automatically open an order for that stock using the rules set.
-                    trade = trade_handler.create_trade(interesting_df)
+                    trade = trade_handler.create_trade(interesting_df, analysis_fig.to_json())
                     trade_handler.make_trade(trade)
 
                 except (TradeCreationError, TradeAnalysisError) as e:

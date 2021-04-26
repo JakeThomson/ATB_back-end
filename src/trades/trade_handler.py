@@ -51,7 +51,7 @@ class TradeHandler:
             download_thread.join()
 
         total_time = dt.timedelta(seconds=(time.time() - start_time))
-        logger.debug(f"Strategy finished in {total_time}")
+        logger.debug(f"Strategy executed in {total_time}")
 
         if not potential_trades:
             # No interesting stocks could be found for this date.
@@ -100,9 +100,10 @@ class TradeHandler:
         sl = (investment_total * self.backtest.sl_limit) / qty
         return tp, sl
 
-    def create_trade(self, interesting_df):
+    def create_trade(self, interesting_df, analysis_fig):
         """ Creates a trade object using all information gathered.
 
+        :param analysis_fig: A figure object holding the details of the triggered indicators.
         :param interesting_df: A dataframe holding all data on the stock to be invested in.
         :return trade: A trade object holding all information on the opened trade.
         """
@@ -117,9 +118,10 @@ class TradeHandler:
                       investment_total=investment_total,
                       take_profit=tp,
                       stop_loss=sl,
-                      triggered_indicators=interesting_df.attrs['triggered_indicators'])
+                      triggered_indicators=interesting_df.attrs['triggered_indicators'],
+                      figure=analysis_fig)
         # Draws the open trade graph using the new trade object.
-        trade.figure, trade.figure_pct = graph_composer.draw_open_trade_graph(trade)
+        trade.priceGaugeFigure, trade.figure_pct = graph_composer.draw_open_trade_graph(trade)
         return trade
 
     def make_trade(self, trade):
@@ -179,7 +181,7 @@ class TradeHandler:
             trade.current_price = trade.historical_data['close'].iloc[-1]
             trade.profit_loss = (trade.current_price * trade.share_qty) - trade.investment_total
             trade.profit_loss_pct = (trade.profit_loss / trade.investment_total) * 100
-            trade.figure, trade.figure_pct = graph_composer.draw_open_trade_graph(trade)
+            trade.priceGaugeFigure, trade.figure_pct = graph_composer.draw_open_trade_graph(trade)
 
             if trade.current_price > trade.take_profit or trade.current_price < trade.stop_loss:
                 # Close the trade

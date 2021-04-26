@@ -1,6 +1,7 @@
 from src.exceptions.custom_exceptions import InvalidStrategyConfigException
 from src.strategy.technical_analysis import TechnicalAnalysisDecorator
 import plotly.graph_objects as go
+import numpy as np
 
 
 def simple_moving_avg(df, period):
@@ -97,12 +98,25 @@ class MovingAverages(TechnicalAnalysisDecorator):
         :return: A plotly figure object.
         """
 
+        start_date_range = historical_df.index[-60]
+        end_date_range = historical_df.index[-1] + np.timedelta64(2,'D')
+
         # If the figure has not yet been drawn, then draw the foundation candlestick chart.
         if fig is None:
             fig = go.Figure(data=[go.Candlestick(x=historical_df.index, open=historical_df['open'],
                                                  high=historical_df['high'], low=historical_df['low'],
                                                  close=historical_df['close'],
                                                  name=f"{historical_df.attrs['ticker']} Stock")])
+            fig.update_layout(height=250, width=460, template="simple_white",
+                              legend=dict(orientation="h", yanchor="top", y=1.12, xanchor="center", x=0.5,
+                                          itemclick="toggleothers",
+                                          itemdoubleclick="toggle", ),
+                              margin=dict(t=10, l=0, r=0, b=0), plot_bgcolor='rgba(0,0,0,0)',
+                              xaxis=dict(rangebreaks=[dict(bounds=['sat', 'mon'])], showline=True, linewidth=2,
+                                         range=[start_date_range, end_date_range], tickcolor="rgba(0,0,0,0.3)",
+                                         linecolor="rgba(0,0,0,0.3)", showgrid=False, gridcolor="rgba(0,0,0,0.1)"),
+                              yaxis=dict(showline=True, linecolor="rgba(0,0,0,0.3)", linewidth=2, showgrid=True,
+                                         gridcolor="rgba(0,0,0,0.08)", tickcolor="rgba(0,0,0,0.3)", layer="below traces"))
 
         # Add the short-term/long-term MA lines to the figure.
         fig.add_traces([
@@ -115,9 +129,6 @@ class MovingAverages(TechnicalAnalysisDecorator):
         ])
         # Update the figure with relevant information.
         fig.update_layout(
-            title=", ".join(historical_df.attrs['triggered_indicators']),
-            yaxis_title=f"{historical_df.attrs['ticker']} Stock",
-            xaxis_title='Date',
             xaxis_rangeslider_visible=False
         )
         return fig
