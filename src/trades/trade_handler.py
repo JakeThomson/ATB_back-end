@@ -111,12 +111,13 @@ class TradeHandler:
         """
         buy_price, qty, investment_total = self.calculate_num_shares_to_buy(interesting_df)
         tp, sl = self.calculate_tp_sl(qty, investment_total)
-        if tp >= analysis_fig.layout.yaxis['range'][1]:
-            analysis_fig.layout.yaxis['range'][1] = tp - analysis_fig.layout.yaxis['range'][1]
-        if sl <= analysis_fig.layout.yaxis['range'][0]:
-            analysis_fig.layout.yaxis['range'][0] = tp - analysis_fig.layout.yaxis['range'][0]
+        yaxis_range = analysis_fig.layout.yaxis['range']
+        if tp >= yaxis_range[1]:
+            print(tp, yaxis_range[1], tp + (tp - yaxis_range[1]))
+            analysis_fig.layout.yaxis['range'] = (yaxis_range[0], tp + (yaxis_range[1] - yaxis_range[0])*0.04)
+        if sl <= yaxis_range[0]:
+            analysis_fig.layout.yaxis['range'][0] = (sl - (yaxis_range[1] - yaxis_range[0])*0.04, yaxis_range[1])
 
-        print(analysis_fig.layout.yaxis)
         analysis_fig.add_traces([go.Scatter(x=[interesting_df.index[-1]], y=[buy_price], showlegend=False,
                                             hoverinfo="skip", mode="markers",
                                             marker=dict(color=["lawngreen", "orangered"],
@@ -184,7 +185,7 @@ class TradeHandler:
         self.backtest.total_balance += trade.profit_loss
         self.backtest.total_profit_loss = self.backtest.total_balance - self.backtest.start_balance
         self.backtest.total_profit_loss_pct = self.backtest.total_profit_loss / self.backtest.start_balance * 100
-        trade.figure = graph_composer.draw_closed_trade_graph(trade)
+        trade.simpleFigure = graph_composer.draw_closed_trade_graph(trade)
 
     def analyse_open_trades(self):
         """ Iterates through all trades in the open_trades array stored in the trade_handler's properties. Sells trades
