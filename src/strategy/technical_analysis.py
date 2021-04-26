@@ -78,22 +78,33 @@ class BaseTechnicalAnalysisModule(TechnicalAnalysisInterface):
             identifies the stock as a potential trade opportunity.
         """
         fig = trade.figure
+        range_days = 31
+
 
         x_val = trade.historical_data.index[-1]
         open_val = trade.historical_data['open'][-1]
         high_val = trade.historical_data['high'][-1]
         low_val = trade.historical_data['low'][-1]
         close_val = trade.historical_data['close'][-1]
-        tp_sl_end_val = next((trace for trace in trade.figure.data if trace['legendgroup'] == "tp/sl"))['x'][1]
-        tp_sl_end_val_new = date_validator.validate_date(tp_sl_end_val + dt.timedelta(days=1), -1)
+        tp_sl_end_val = trade.historical_data.index[-1] + np.timedelta64(5, 'D')
+        tp_sl_end_val = date_validator.validate_date(tp_sl_end_val, -1)
 
         fig.data[0]['x'] = np.append(fig.data[0]['x'], x_val)
         fig.data[0]['open'] = np.append(fig.data[0]['open'], open_val)
         fig.data[0]['high'] = np.append(fig.data[0]['high'], high_val)
         fig.data[0]['low'] = np.append(fig.data[0]['low'], low_val)
         fig.data[0]['close'] = np.append(fig.data[0]['close'], close_val)
-        for trace in fig.data:
+        for i, trace in enumerate(fig.data):
             if trace['legendgroup'] == "tp/sl":
-                trace['x'] = (trace['x'][0], tp_sl_end_val_new)
+                trace['x'] = (trace['x'][0], tp_sl_end_val)
+
+        start_date_range = trade.historical_data.index[-range_days]
+        end_date_range = trade.historical_data.index[-1] + np.timedelta64(7, 'D')
+        y_min = min(np.append(trade.historical_data['low'][-range_days:].values, trade.take_profit))
+        y_max = max(np.append(trade.historical_data['high'][-range_days:].values, trade.stop_loss))
+        y_range_offset = (y_max - y_min) * 0.15
+
+        fig.update_layout(xaxis=dict(range=[start_date_range, end_date_range]),
+                          yaxis=dict(range=[y_min - y_range_offset, y_max + y_range_offset]))
 
         return fig

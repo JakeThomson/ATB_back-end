@@ -100,7 +100,6 @@ class MovingAverages(TechnicalAnalysisDecorator):
                     f"unrecognised.")
 
             x_val = trade.historical_data.index[-1]
-
             for trace in fig.data:
                 if trace['name'] == f"{self.config['longTermDayPeriod']}-day {self.config['longTermType']}":
                     trace['x'] = np.append(trace['x'], x_val)

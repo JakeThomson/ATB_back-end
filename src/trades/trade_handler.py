@@ -1,4 +1,5 @@
 from src.data_handlers.historical_data_handler import HistoricalDataHandler
+from src.data_validators import date_validator
 from src.trades import graph_composer
 from src.exceptions.custom_exceptions import TradeCreationError, TradeAnalysisError, InvalidHistoricalDataIndexError
 from src.data_handlers import request_handler
@@ -123,12 +124,12 @@ class TradeHandler:
                                                         symbol=["triangle-up", "triangle-down"], size=10,
                                                         line=dict(color=["darkgreen", "darkred"], width=1.5))),
                                  go.Scatter(
-                                     x=[interesting_df.index[-2], interesting_df.index[-2] + np.timedelta64(7, 'D')],
+                                     x=[interesting_df.index[-2], date_validator.validate_date(interesting_df.index[-2] + np.timedelta64(7, 'D'), -1)],
                                      y=[tp, tp], showlegend=True,
                                      hoverinfo="skip", mode="lines", name="TP/SL", legendgroup="tp/sl",
                                      line=dict(color="rgba(0, 100, 0, 0.5)", dash="dot", width=1.3)),
                                  go.Scatter(
-                                     x=[interesting_df.index[-2], interesting_df.index[-2] + np.timedelta64(7, 'D')],
+                                     x=[interesting_df.index[-2], date_validator.validate_date(interesting_df.index[-2] + np.timedelta64(7, 'D'), -1)],
                                      y=[sl, sl], showlegend=False,
                                      hoverinfo="skip", mode="lines", name="TP/SL", legendgroup="tp/sl",
                                      line=dict(color="rgba(1000, 0, 0, 0.5)", dash="dot", width=1.3)),
