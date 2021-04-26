@@ -95,3 +95,7 @@ class Strategy:
             if stock_df.attrs['triggered_indicators']:
                 potential_trades.append((stock_df, fig))
         return
+
+    def update_figure(self, trade):
+        fig = self.technical_analysis.update_figure(trade)
+        return fig

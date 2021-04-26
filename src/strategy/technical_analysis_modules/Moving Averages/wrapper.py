@@ -1,7 +1,9 @@
 from src.exceptions.custom_exceptions import InvalidStrategyConfigException
 from src.strategy.technical_analysis import TechnicalAnalysisDecorator
+from src.data_validators import date_validator
 import plotly.graph_objects as go
 import numpy as np
+import datetime as dt
 
 
 def simple_moving_avg(df, period):
@@ -66,6 +68,48 @@ class MovingAverages(TechnicalAnalysisDecorator):
 
         # Return dataframe and figure (if it has been drawn).
         return historical_df, fig
+
+    def update_figure(self, trade):
+        """ Analyse the historical data for an opportunity to trade using moving averages.
+            If the short-term MA has just become more than the long-term, then that indicates an uptrend is occurring.
+
+        :param historical_df: A DataFrame holding the historical data to be analysed.
+        :return: The same historical dataframe, and a plotly figure object if indicator has been triggered, or None if
+            not.
+        """
+        # Perform the inner layers of the strategy first (In order defined in the config).
+        fig = self._wrapped.update_figure(trade)
+
+        if "MovingAverages" in trade.triggered_indicators:
+            # Define long-term and short-term lines based on config.
+            if self.config['longTermType'] == "SMA":
+                long_term_val = simple_moving_avg(trade.historical_data, self.config['longTermDayPeriod'])[-1]
+            elif self.config['longTermType'] == "EMA":
+                long_term_val = exponential_moving_avg(trade.historical_data, self.config['longTermDayPeriod'])[-1]
+            else:
+                raise InvalidStrategyConfigException(f"MovingAverage indicator type '{self.config['longTermType']}' is "
+                                                     f"unrecognised.")
+
+            if self.config['shortTermType'] == "SMA":
+                short_term_val = simple_moving_avg(trade.historical_data, self.config['shortTermDayPeriod'])[-1]
+            elif self.config['shortTermType'] == "EMA":
+                short_term_val = exponential_moving_avg(trade.historical_data, self.config['shortTermDayPeriod'])[-1]
+            else:
+                raise InvalidStrategyConfigException(
+                    f"MovingAverage indicator type '{self.config['shortTermType']}' is "
+                    f"unrecognised.")
+
+            x_val = trade.historical_data.index[-1]
+
+            for trace in fig.data:
+                if trace['name'] == f"{self.config['longTermDayPeriod']}-day {self.config['longTermType']}":
+                    trace['x'] = np.append(trace['x'], x_val)
+                    trace['y'] = np.append(trace['y'], long_term_val)
+                if trace['name'] == f"{self.config['shortTermDayPeriod']}-day {self.config['shortTermType']}":
+                    trace['x'] = np.append(trace['x'], x_val)
+                    trace['y'] = np.append(trace['y'], short_term_val)
+
+        return fig
 
     def _check_for_intersect(self, long_term, short_term):
         """ Check the short-term and long-term lines to see if they have just intersected.
