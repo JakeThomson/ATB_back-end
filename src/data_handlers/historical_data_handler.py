@@ -122,7 +122,7 @@ class HistoricalDataHandler:
 
         # Grab historical dataframe from the relevant SQLite table for the correct date range.
         historical_df = pd.read_sql_query(
-            f"""SELECT * FROM '{ticker}' WHERE `date` >= ? AND `date` <= ?""", conn, params=[buffer_date, backtest_date],
+            f"""SELECT * FROM '{ticker}' WHERE `date` > ? AND `date` <= ?""", conn, params=[buffer_date, backtest_date],
             index_col='date', parse_dates=['date'])
 
         # Add the ticker to the dataframe's custom attributes for later identification.

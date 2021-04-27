@@ -1,6 +1,8 @@
 from src.data_validators import date_validator
+import plotly.graph_objects as go
 import datetime as dt
 import numpy as np
+
 
 
 class TechnicalAnalysisInterface:
@@ -54,6 +56,36 @@ class TechnicalAnalysisDecorator(TechnicalAnalysisInterface):
         """
         return None
 
+    def _draw_initial_figure(self, historical_df):
+        range_days = 10
+        start_index_offset = len(historical_df.index) - 50
+        start_date_range = historical_df.index[-range_days]
+        end_date_range = historical_df.index[-1] + np.timedelta64(7, 'D')
+        y_min = min(historical_df['low'][-range_days:].values)
+        y_max = max(historical_df['high'][-range_days:].values)
+
+        y_range_offset = (y_max - y_min) * 0.15
+        # Draw the foundation candlestick chart.
+        fig = go.Figure(data=[go.Candlestick(x=historical_df.index[-start_index_offset:],
+                                             open=historical_df['open'][-start_index_offset:],
+                                             high=historical_df['high'][-start_index_offset:],
+                                             low=historical_df['low'][-start_index_offset:],
+                                             close=historical_df['close'][-start_index_offset:],
+                                             line=dict(width=1.2),
+                                             name="Stock Price")])
+        fig.update_layout(height=250, width=460, template="simple_white",
+                          legend=dict(orientation="h", yanchor="top", y=1.17, xanchor="center", x=0.5,
+                                      font_size=10),
+                          margin=dict(t=10, l=0, r=0, b=0), plot_bgcolor='rgba(0,0,0,0)',
+                          xaxis=dict(rangebreaks=[dict(bounds=['sat', 'mon'])], showline=True,
+                                     linewidth=1, range=[start_date_range, end_date_range],
+                                     tickcolor="rgba(0,0,0,0.3)", linecolor="rgba(0,0,0,0.3)", showgrid=False),
+                          yaxis=dict(showline=True, linecolor="rgba(0,0,0,0.3)", linewidth=1, showgrid=True,
+                                     gridcolor="rgba(0,0,0,0.08)", tickcolor="rgba(0,0,0,0.3)",
+                                     layer="below traces", range=[y_min - y_range_offset, y_max + y_range_offset]))
+
+        return fig
+
 
 class BaseTechnicalAnalysisModule(TechnicalAnalysisInterface):
     """ Concrete component with the default analysis functionality (nothing). This is what gets wrapped by the
@@ -78,8 +110,7 @@ class BaseTechnicalAnalysisModule(TechnicalAnalysisInterface):
             identifies the stock as a potential trade opportunity.
         """
         fig = trade.figure
-        range_days = 31
-
+        range_days = 10
 
         x_val = trade.historical_data.index[-1]
         open_val = trade.historical_data['open'][-1]

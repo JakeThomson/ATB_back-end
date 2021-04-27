@@ -116,10 +116,10 @@ class TradeHandler:
         if tp >= yaxis_range[1]:
             analysis_fig.layout.yaxis['range'] = (yaxis_range[0], tp + (yaxis_range[1] - yaxis_range[0])*0.04)
         if sl <= yaxis_range[0]:
-            analysis_fig.layout.yaxis['range'][0] = (sl - (yaxis_range[1] - yaxis_range[0])*0.04, yaxis_range[1])
+            analysis_fig.layout.yaxis['range'] = (sl - (yaxis_range[1] - yaxis_range[0])*0.04, yaxis_range[1])
 
         analysis_fig.add_traces([go.Scatter(x=[interesting_df.index[-1]], y=[buy_price], showlegend=False,
-                                            hoverinfo="skip", mode="markers",
+                                            hoverinfo="skip", mode="markers", name="buysell",
                                             marker=dict(color=["lawngreen", "orangered"],
                                                         symbol=["triangle-up", "triangle-down"], size=10,
                                                         line=dict(color=["darkgreen", "darkred"], width=1.5))),
@@ -186,6 +186,11 @@ class TradeHandler:
         self.backtest.total_profit_loss = self.backtest.total_balance - self.backtest.start_balance
         self.backtest.total_profit_loss_pct = self.backtest.total_profit_loss / self.backtest.start_balance * 100
         trade.simpleFigure = graph_composer.draw_closed_trade_graph(trade)
+        for i, trace in enumerate(trade.figure.data):
+            if trace['name'] == "buysell":
+                trace['x'] = np.append(trace['x'], trade.sell_date)
+                trace['y'] = np.append(trace['y'], trade.sell_price)
+
 
     def analyse_open_trades(self):
         """ Iterates through all trades in the open_trades array stored in the trade_handler's properties. Sells trades
@@ -199,7 +204,7 @@ class TradeHandler:
         # objects in separate arrays.
         json_open_trades_array = []
         json_closed_trades_array = []
-        for i, trade in enumerate(self.open_trades):
+        for i, trade in reversed(list(enumerate(self.open_trades))):
             # Get the respective day's data for the targeted trade from the SQLite tables and append to historical
             # data, trimming off the first column to keep the dataframe short.
             new_data = self.hist_data_handler.get_hist_dataframe(trade.ticker, self.backtest.backtest_date, num_weeks=0,
@@ -218,12 +223,10 @@ class TradeHandler:
                 # Add json object to closed trades array.
                 json_trade = trade.to_JSON_serializable()
                 json_closed_trades_array.append(json_trade)
-                pass
             else:
-                # Add updarted json object to open trades array.
+                # Add updated json object to open trades array.
                 json_trade = trade.to_JSON_serializable()
                 json_open_trades_array.append(json_trade)
-                pass
 
         # Generate profit/loss graph.
         self.backtest.total_profit_loss_graph = graph_composer.update_profit_loss_graph(self.backtest)
