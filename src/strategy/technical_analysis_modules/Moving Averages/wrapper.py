@@ -63,7 +63,7 @@ class MovingAverages(TechnicalAnalysisDecorator):
         opportunity = self._check_for_intersect(long_term, short_term)
         if opportunity:
             # If the short-term and long-term have just intersected then mark as triggered by MA and draw graph.
-            historical_df.attrs['triggered_indicators'].append("MovingAverages")
+            historical_df.attrs['triggered_indicators'].append("Moving Averages")
             fig = self._draw_figure(historical_df, fig, long_term, short_term)
 
         # Return dataframe and figure (if it has been drawn).
@@ -80,7 +80,7 @@ class MovingAverages(TechnicalAnalysisDecorator):
         # Perform the inner layers of the strategy first (In order defined in the config).
         fig = self._wrapped.update_figure(trade)
 
-        if "MovingAverages" in trade.triggered_indicators:
+        if "Moving Averages" in trade.triggered_indicators:
             # Define long-term and short-term lines based on config.
             if self.config['longTermType'] == "SMA":
                 long_term_val = simple_moving_avg(trade.historical_data, self.config['longTermDayPeriod'])[-1]

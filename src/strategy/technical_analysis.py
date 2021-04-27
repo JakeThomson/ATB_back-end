@@ -57,7 +57,7 @@ class TechnicalAnalysisDecorator(TechnicalAnalysisInterface):
         return None
 
     def _draw_initial_figure(self, historical_df):
-        range_days = 10
+        range_days = 30
         start_index_offset = len(historical_df.index) - 50
         start_date_range = historical_df.index[-range_days]
         end_date_range = historical_df.index[-1] + np.timedelta64(7, 'D')
@@ -110,7 +110,7 @@ class BaseTechnicalAnalysisModule(TechnicalAnalysisInterface):
             identifies the stock as a potential trade opportunity.
         """
         fig = trade.figure
-        range_days = 10
+        range_days = 30
 
         x_val = trade.historical_data.index[-1]
         open_val = trade.historical_data['open'][-1]
