@@ -99,6 +99,13 @@ class MovingAverages(TechnicalAnalysisDecorator):
                     f"MovingAverage indicator type '{self.config['shortTermType']}' is "
                     f"unrecognised.")
 
+            range_days = 30
+            y_min = min(np.append(trade.historical_data['low'][-range_days:].values, (long_term_val, short_term_val)))
+            y_max = max(np.append(trade.historical_data['high'][-range_days:].values, (long_term_val, short_term_val)))
+            y_range_offset = (y_max - y_min) * 0.15
+
+            fig.update_layout(yaxis=dict(range=[y_min - y_range_offset, y_max + y_range_offset]))
+
             x_val = trade.historical_data.index[-1]
             for trace in fig.data:
                 if trace['name'] == f"{self.config['longTermDayPeriod']}-day {self.config['longTermType']}":
@@ -141,7 +148,7 @@ class MovingAverages(TechnicalAnalysisDecorator):
         :return: A plotly figure object.
         """
 
-        range_days = 10
+        range_days = 30
         start_index_offset = len(historical_df.index) - 50
         y_min = min(np.concatenate((historical_df['low'][-range_days:].values, long_term[-range_days:].values, short_term[-range_days:].values)))
         y_max = max(np.concatenate((historical_df['high'][-range_days:].values, long_term[-range_days:].values, short_term[-range_days:].values)))
