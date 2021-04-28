@@ -43,16 +43,23 @@ def disconnect():
 
 @sio.on('getAnalysisModules')
 def get_analysis_modules(req):
+    """ Get a list of all available modules in the modules directory and the data for their configuration forms. """
     log.info("Server requested analysis modules")
     path = "./src/strategy/technical_analysis_modules/"
+
+    # Get list of module names (the names of the module folders).
     analysis_modules = [item for item in os.listdir(path) if os.path.isdir(os.path.join(path, item))]
+    # Initialise empty dictionary object to be sent to the UI.
     result = {}
 
+    # Iterate through all the analysis modules and grab their configuration form data.
     for module in analysis_modules:
         with open(f'{path}/{module}/form_configuration.json') as f:
             data = json.load(f)
+            # Save the module name and config form data as a key:value pair in the dict.
             result[module] = data
 
+    # Return the dict to the data access api, which will be sent to the UI and cached in the DB.
     return result
 
 
@@ -72,7 +79,7 @@ def handle_exit(signum, frame):
 
 # Main code
 if __name__ == '__main__':
-    # deadline_reminder.print_deadline_reminder()
+    deadline_reminder.print_deadline_reminder()
 
     # Signal handlers listen for events that attempt to kill the program (CTRL+C, PyCharm 'STOP', etc.).
     # IMPORTANT!! If using PyCharm, you must have 'kill.windows.processes.softly' set to true in the registry.

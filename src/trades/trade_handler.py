@@ -112,24 +112,31 @@ class TradeHandler:
         """
         buy_price, qty, investment_total = self.calculate_num_shares_to_buy(interesting_df)
         tp, sl = self.calculate_tp_sl(qty, investment_total)
+
+        # Update yaxis range if tp/sl limits are higher or lower than the current.
         yaxis_range = analysis_fig.layout.yaxis['range']
         if tp >= yaxis_range[1]:
-            analysis_fig.layout.yaxis['range'] = (yaxis_range[0], tp + (yaxis_range[1] - yaxis_range[0])*0.04)
+            analysis_fig.layout.yaxis['range'] = (yaxis_range[0], tp + (yaxis_range[1] - yaxis_range[0]) * 0.04)
         if sl <= yaxis_range[0]:
-            analysis_fig.layout.yaxis['range'] = (sl - (yaxis_range[1] - yaxis_range[0])*0.04, yaxis_range[1])
+            analysis_fig.layout.yaxis['range'] = (sl - (yaxis_range[1] - yaxis_range[0]) * 0.04, yaxis_range[1])
 
+        # Add the stop loss/take profit lines and the buy marker to the figure.
         analysis_fig.add_traces([go.Scatter(x=[interesting_df.index[-1]], y=[buy_price], showlegend=False,
                                             hoverinfo="skip", mode="markers", name="buysell",
                                             marker=dict(color=["lawngreen", "orangered"],
                                                         symbol=["triangle-up", "triangle-down"], size=10,
                                                         line=dict(color=["darkgreen", "darkred"], width=1.5))),
                                  go.Scatter(
-                                     x=[interesting_df.index[-2], date_validator.validate_date(interesting_df.index[-2] + np.timedelta64(7, 'D'), -1)],
+                                     x=[interesting_df.index[-2],
+                                        date_validator.validate_date(interesting_df.index[-2] + np.timedelta64(7, 'D'),
+                                                                     -1)],
                                      y=[tp, tp], showlegend=True,
                                      hoverinfo="skip", mode="lines", name="TP/SL", legendgroup="tp/sl",
                                      line=dict(color="rgba(0, 100, 0, 0.5)", dash="dot", width=1.3)),
                                  go.Scatter(
-                                     x=[interesting_df.index[-2], date_validator.validate_date(interesting_df.index[-2] + np.timedelta64(7, 'D'), -1)],
+                                     x=[interesting_df.index[-2],
+                                        date_validator.validate_date(interesting_df.index[-2] + np.timedelta64(7, 'D'),
+                                                                     -1)],
                                      y=[sl, sl], showlegend=False,
                                      hoverinfo="skip", mode="lines", name="TP/SL", legendgroup="tp/sl",
                                      line=dict(color="rgba(1000, 0, 0, 0.5)", dash="dot", width=1.3)),
@@ -186,11 +193,11 @@ class TradeHandler:
         self.backtest.total_profit_loss = self.backtest.total_balance - self.backtest.start_balance
         self.backtest.total_profit_loss_pct = self.backtest.total_profit_loss / self.backtest.start_balance * 100
         trade.simpleFigure = graph_composer.draw_closed_trade_graph(trade)
+        # Add the close trade marker to the figure.
         for i, trace in enumerate(trade.figure.data):
             if trace['name'] == "buysell":
                 trace['x'] = np.append(trace['x'], trade.sell_date)
                 trace['y'] = np.append(trace['y'], trade.sell_price)
-
 
     def analyse_open_trades(self):
         """ Iterates through all trades in the open_trades array stored in the trade_handler's properties. Sells trades
@@ -214,6 +221,8 @@ class TradeHandler:
             trade.profit_loss = (trade.current_price * trade.share_qty) - trade.investment_total
             trade.profit_loss_pct = (trade.profit_loss / trade.investment_total) * 100
             trade.simpleFigure, trade.figure_pct = graph_composer.draw_open_trade_graph(trade)
+
+            # Get all analysis modules that triggered this trade to update their traces in the figure.
             trade.figure = self.strategy.update_figure(trade)
 
             if trade.current_price > trade.take_profit or trade.current_price < trade.stop_loss:

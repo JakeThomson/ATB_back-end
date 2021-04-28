@@ -4,7 +4,6 @@ import datetime as dt
 import numpy as np
 
 
-
 class TechnicalAnalysisInterface:
     """ The base component for the decorator pattern used in the dynamic technical analysis creation. """
 
@@ -39,11 +38,10 @@ class TechnicalAnalysisDecorator(TechnicalAnalysisInterface):
         return historical_df, fig
 
     def update_figure(self, trade):
-        """ Blank analysis module, holds no analysis logic.
+        """ Updates the graph held within the open trade object.
 
-        :param historical_df: A DataFrame holding the historical data to be analysed.
-        :return: The same historical dataframe, and a NoneType in place for a figure to be applied if further analysis
-            identifies the stock as a potential trade opportunity.
+        :param trade: A Trade object holding all information on the open trade.
+        :return: The updated figure.
         """
         # Perform the inner layers of the strategy first (In order defined in the config).
         fig = self._wrapped.update_figure(trade)
@@ -57,6 +55,12 @@ class TechnicalAnalysisDecorator(TechnicalAnalysisInterface):
         return None
 
     def _draw_initial_figure(self, historical_df):
+        """ The base implementation of draw figure, plots a candlestick chart with the historical data and sets the
+            initial layout settings. Analysis wrappers will add to this figure.
+
+        :param historical_df:
+        :return: A DataFrame holding the historical data to be analysed.
+        """
         range_days = 30
         start_index_offset = len(historical_df.index) - 50
         start_date_range = historical_df.index[-range_days]
@@ -103,15 +107,15 @@ class BaseTechnicalAnalysisModule(TechnicalAnalysisInterface):
         return historical_df, fig
 
     def update_figure(self, trade):
-        """ Blank analysis module, holds no analysis logic.
+        """ Updates the basic candlestick chart held within the open trade object.
 
-        :param historical_df: A DataFrame holding the historical data to be analysed.
-        :return: The same historical dataframe, and a NoneType in place for a figure to be applied if further analysis
-            identifies the stock as a potential trade opportunity.
+        :param trade: A Trade object holding all information on the open trade.
+        :return: The updated figure.
         """
         fig = trade.figure
         range_days = 30
 
+        # Get all updated values to be added to the figure.
         x_val = trade.historical_data.index[-1]
         open_val = trade.historical_data['open'][-1]
         high_val = trade.historical_data['high'][-1]
@@ -120,15 +124,19 @@ class BaseTechnicalAnalysisModule(TechnicalAnalysisInterface):
         tp_sl_end_val = trade.historical_data.index[-1] + np.timedelta64(5, 'D')
         tp_sl_end_val = date_validator.validate_date(tp_sl_end_val, -1)
 
+        # Append the newest values from the historical dataframe to the figure data arrays.
         fig.data[0]['x'] = np.append(fig.data[0]['x'], x_val)
         fig.data[0]['open'] = np.append(fig.data[0]['open'], open_val)
         fig.data[0]['high'] = np.append(fig.data[0]['high'], high_val)
         fig.data[0]['low'] = np.append(fig.data[0]['low'], low_val)
         fig.data[0]['close'] = np.append(fig.data[0]['close'], close_val)
+
+        # Find the tp/sl traces in the figure and extend x[1] by one day (y value doesn't need to change).
         for i, trace in enumerate(fig.data):
             if trace['legendgroup'] == "tp/sl":
                 trace['x'] = (trace['x'][0], tp_sl_end_val)
 
+        # Update the view range for the axis.
         start_date_range = trade.historical_data.index[-range_days]
         end_date_range = trade.historical_data.index[-1] + np.timedelta64(7, 'D')
         y_min = min(np.append(trade.historical_data['low'][-range_days:].values, trade.take_profit))

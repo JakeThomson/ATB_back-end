@@ -50,12 +50,10 @@ class BollingerBands(TechnicalAnalysisDecorator):
         return historical_df, fig
 
     def update_figure(self, trade):
-        """ Analyse the historical data for an opportunity to trade using moving averages.
-            If the short-term MA has just become more than the long-term, then that indicates an uptrend is occurring.
+        """ Updates the bollinger band traces in the candlestick chart within the open trade object.
 
-        :param historical_df: A DataFrame holding the historical data to be analysed.
-        :return: The same historical dataframe, and a plotly figure object if indicator has been triggered, or None if
-            not.
+        :param trade: A Trade object holding all information on the open trade.
+        :return: The updated figure.
         """
         # Perform the inner layers of the strategy first (In order defined in the config).
         fig = self._wrapped.update_figure(trade)
@@ -70,6 +68,7 @@ class BollingerBands(TechnicalAnalysisDecorator):
             upper_band = sma + (stdev * 2)
             lower_band = sma - (stdev * 2)
 
+            # Get the new y_max and y_min values to calculate the new yaxis range.
             range_days = 30
             y_min = min(np.append(trade.historical_data['low'][-range_days:].values, lower_band[-range_days]))
             y_max = max(np.append(trade.historical_data['high'][-range_days:].values, upper_band[-range_days]))
@@ -77,6 +76,7 @@ class BollingerBands(TechnicalAnalysisDecorator):
 
             fig.update_layout(yaxis=dict(range=[y_min - y_range_offset, y_max + y_range_offset]))
 
+            # Update the Bollinger Band traces in the figure with the respective updated value.
             x_val = trade.historical_data.index[-1]
             for trace in fig.data:
                 if trace['name'] == f"{self.config['dayPeriod']}-day Bollinger Bands":

@@ -195,7 +195,8 @@ class HistoricalDataHandler:
                 first_date = dt.datetime.strftime(historical_df.iloc[0]['date'], "%Y-%m-%d %H:%M:%S")
                 historical_df.to_sql(ticker, conn, if_exists='replace', index=False)
                 c.execute(f'''INSERT INTO available_tickers (ticker, valid, market_index, first_date, last_date) 
-                                    VALUES (?, ?, ?, ?, ?)''', [ticker, valid, self.market_index, first_date, last_date])
+                                    VALUES (?, ?, ?, ?, ?)''',
+                          [ticker, valid, self.market_index, first_date, last_date])
                 conn.commit()
             # If table already exists in SQLite DB, check to see if it has data up until self.end_date.
             else:
@@ -220,7 +221,8 @@ class HistoricalDataHandler:
                     except KeyError:
                         # No data was returned from DataReader.
                         conn.close()
-                        log.error(f"No data avaiblable for {ticker} between {download_from_date.date()} & {self.end_date.date()}")
+                        log.error(
+                            f"No data avaiblable for {ticker} between {download_from_date.date()} & {self.end_date.date()}")
                         continue
                     historical_df = historical_df.reset_index().reindex(
                         columns=["Date", "Open", "High", "Low", "Close", "Volume", "Adj Close"])
@@ -263,7 +265,7 @@ class HistoricalDataHandler:
         # Create a number of processes to download data concurrently, to speed up the process.
         for process_id in range(0, self.max_processes):
             download_process = threading.Thread(target=self.download_historical_data_to_sqlite,
-                                                      args=(tickers, process_id))
+                                                args=(tickers, process_id))
             download_processes.append(download_process)
             download_process.start()
 
