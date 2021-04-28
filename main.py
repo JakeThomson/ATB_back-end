@@ -79,7 +79,7 @@ def handle_exit(signum, frame):
 
 # Main code
 if __name__ == '__main__':
-    deadline_reminder.print_deadline_reminder()
+    # deadline_reminder.print_deadline_reminder()
 
     # Signal handlers listen for events that attempt to kill the program (CTRL+C, PyCharm 'STOP', etc.).
     # IMPORTANT!! If using PyCharm, you must have 'kill.windows.processes.softly' set to true in the registry.

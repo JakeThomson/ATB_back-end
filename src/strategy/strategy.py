@@ -1,7 +1,8 @@
 from src.data_handlers import request_handler
 from src.data_handlers.historical_data_handler import HistoricalDataHandler, split_list
 from src.strategy.technical_analysis import BaseTechnicalAnalysisModule
-from src.exceptions.custom_exceptions import InvalidHistoricalDataIndexError, InvalidStrategyConfigException
+from src.exceptions.custom_exceptions import InvalidHistoricalDataIndexError, InvalidStrategyConfigException, \
+    InvalidHistoricalDataError
 import logging
 
 logger = logging.getLogger("strategy")
@@ -77,8 +78,8 @@ class Strategy:
                 stock_df = self.hist_data_handler.get_hist_dataframe(ticker, self.backtest.backtest_date,
                                                                      self.max_lookback_range_weeks)
                 stock_df.attrs['triggered_indicators'] = []
-            except InvalidHistoricalDataIndexError:
-                # If there isn't enough data recorded for this ticker, skip it.
+            except (InvalidHistoricalDataIndexError, InvalidHistoricalDataError):
+                # If there isn't enough data recorded for this ticker, or it is marked as invalid, skip it.
                 continue
 
             try:

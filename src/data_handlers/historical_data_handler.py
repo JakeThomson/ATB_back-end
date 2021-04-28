@@ -1,6 +1,7 @@
 from src.data_validators.historical_data_validator import HistoricalDataValidator
 from src.data_validators import date_validator
-from src.exceptions.custom_exceptions import InvalidMarketIndexError, InvalidHistoricalDataIndexError
+from src.exceptions.custom_exceptions import InvalidMarketIndexError, InvalidHistoricalDataIndexError, \
+    InvalidHistoricalDataError
 
 import math
 import datetime as dt
@@ -114,7 +115,10 @@ class HistoricalDataHandler:
         buffer_date = backtest_date - dt.timedelta(weeks=num_weeks, days=num_days)
 
         # Get the first date of historical data that is recorded in the SQLite database of the ticker.
-        first_date = c.execute(f"""SELECT first_date FROM available_tickers WHERE ticker=? """, [ticker]).fetchone()[0]
+        first_date, valid = \
+            c.execute(f"""SELECT first_date, valid FROM available_tickers WHERE ticker=? """, [ticker]).fetchone()
+        if not valid:
+            raise InvalidHistoricalDataError(ticker)
         first_date = dt.datetime.strptime(first_date, '%Y-%m-%d %H:%M:%S')
         if buffer_date <= first_date:
             # If trying to access a data that doesn't exist, throw exception.
