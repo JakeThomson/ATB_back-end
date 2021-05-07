@@ -48,13 +48,16 @@ To run the backtesting platform, navigate to the project directory in cmd/termin
 ```
 py main.py
 ```
+If it is the first time running the application, it will need to download the required historical data - this will
+take around 4-10 minutes depending on your download speed.
+
+Once the platform is live, it can be viewed on the URL [algo-trader.jake-t.codes](https://algo-trader.jake-t.codes)
+
+<span style="font-size:14pt;">**IMPORTANT:**</span> When you wish to stop the application, you must do so by pressing 
+`ctrl` + `c`/`cmd` + `c` in the cmd/terminal window. This will allow the backtest to safely shut down.
 
 If you wish for the backtest to connect to the data access API on a local network, then use the command 
 ```
 py main.py local
 ```
-If it is the first time running the application, it will need to download the required historical data - this will
-take around 4-10 minutes depending on your download speed.
 
-<span style="font-size:14pt;">**IMPORTANT:**</span> When you wish to stop the application, you must do so by pressing 
-`ctrl` + `c`/`cmd` + `c` in the cmd/terminal window. This will allow the backtest to safely shut down.
