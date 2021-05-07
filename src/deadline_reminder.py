@@ -26,7 +26,7 @@ def print_deadline_reminder():
     else:
         end_of_current_date = dt.datetime.combine(dt.date.today(), dt.datetime.min.time())
 
-    deadline = dt.datetime(2021, 5, 3)
+    deadline = dt.datetime(2021, 5, 7)
     word_limit = 10500
     try:
         report = docx.Document(report_path)
@@ -58,7 +58,7 @@ def print_deadline_reminder():
         project_time_progress_pct = round((current_project_progress / total_difference) * 100, 2)
         target_word_count = round(word_limit * ((end_of_current_date - report_start_date) / report_difference))
         logging.info("*---------------------- REPORT STATUS ----------------------*")
-        logging.info(f"{(deadline - current_date).days} days left until soft deadline. ({project_time_progress_pct}%)")
+        logging.info(f"{(deadline - current_date).days} days left until deadline. ({project_time_progress_pct}%)")
         logging.info(f"Time progress since started report: {report_time_progress_pct}%")
         logging.info(f"Target word count: {target_word_count} ({round(target_word_count / word_limit * 100, 2)}%)")
         logging.info(f"Current word count: {word_count} ({round(word_count / word_limit * 100, 2)}%)")

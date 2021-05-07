@@ -36,9 +36,9 @@ class Strategy:
         self.backtest = backtest
         self.hist_data_handler = HistoricalDataHandler(start_date=backtest.start_date)
         self.max_lookback_range_weeks = strategy_config['lookbackRangeWeeks']
-        self.technical_analysis = self.init_technical_analysis(strategy_config)
+        self.technical_analysis = self._init_technical_analysis(strategy_config)
 
-    def init_technical_analysis(self, config):
+    def _init_technical_analysis(self, config):
         """ Dynamically creates an order of execution for the analysis segment of the strategy defined in the provided
             config JSON by using the decorator pattern.
 

@@ -79,7 +79,6 @@ def handle_exit(signum, frame):
 
 # Main code
 if __name__ == '__main__':
-    # deadline_reminder.print_deadline_reminder()
 
     # Signal handlers listen for events that attempt to kill the program (CTRL+C, PyCharm 'STOP', etc.).
     # IMPORTANT!! If using PyCharm, you must have 'kill.windows.processes.softly' set to true in the registry.
@@ -88,14 +87,15 @@ if __name__ == '__main__':
 
     # Download/update historical data.
     start_date = dt.datetime(2009, 1, 1)
-    hist_data_mgr = HistoricalDataHandler(start_date=start_date, market_index="S&P500", max_processes=7)
+    hist_data_mgr = HistoricalDataHandler(start_date=start_date, market_index="S&P500", max_threads=7)
     tickers = hist_data_mgr.get_tickers()
-    # hist_data_mgr.multiprocess_data_download(tickers)
+    hist_data_mgr.multithreaded_data_download(tickers)
 
     # Read command line argument to determine what environment URL to hit for the data access api.
     environment = str(sys.argv[1]) if len(sys.argv) == 2 else "prod"
     request_handler.set_environment(sio, environment)
 
+    # Set up backtest controller, which handles all backtest operations (restarts etc.)
     backtest_controller = BacktestController(sio, tickers)
 
     while 1:  # Forces main thread to stay alive, so that the signal handler still exists.

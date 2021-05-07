@@ -21,19 +21,19 @@ import sqlite3
 class HistoricalDataHandler:
     num_tickers = 0
 
-    def __init__(self, market_index="S&P500", max_processes=4, start_date=dt.datetime(2000, 1, 1),
+    def __init__(self, market_index="S&P500", max_threads=4, start_date=dt.datetime(2000, 1, 1),
                  end_date=(dt.datetime.today().replace(hour=0, minute=0, second=0, microsecond=0)
                            - dt.timedelta(days=1))):
         """ Constructor class that instantiates the historical data manager.
 
         :param market_index: Label for the market index to be used in the backtest.
             Currently supported index labels: 'S&P500'.
-        :param max_processes: The max number of processes to be used to download data.
+        :param max_threads: The max number of threads to be used to download data.
         :param start_date: The date to download data from.
         :param end_date: The date to download data up to (Default is yesterday).
         """
         self.market_index = market_index
-        self.max_processes = max_processes
+        self.max_threads = max_threads
         self.start_date = date_validator.validate_date(start_date, 1)
         self.end_date = date_validator.validate_date(end_date, -1)
         self.market_index_file_path = "historical_data/market_index_lists/"
@@ -158,16 +158,16 @@ class HistoricalDataHandler:
             # Else, it is up to date.
             return True, None
 
-    def download_historical_data_to_sqlite(self, tickers, process_id):
+    def download_historical_data_to_sqlite(self, tickers, thread_id):
         """ Gets historical data from Yahoo using a slice of the tickers provided in the tickers list.
 
         :param tickers: A list of company tickers.
-        :param process_id: The ID of the process that called this function.
+        :param thread_id: The ID of the thread that called this function.
         :return: none
         """
 
-        # Get a portion of tickers for this process to work with.
-        slice_of_tickers = split_list(tickers, self.max_processes, process_id)
+        # Get a portion of tickers for this thread to work with.
+        slice_of_tickers = split_list(tickers, self.max_threads, thread_id)
 
         # Iterate through ticker list and download historical data into a sqlite table if it does not already exist.
         for ticker in slice_of_tickers:
@@ -241,8 +241,8 @@ class HistoricalDataHandler:
                     conn.commit()
             conn.close()
 
-    def multiprocess_data_download(self, tickers):
-        """ Downloads historical data using multiple processes, max processes are set in the class attributes.
+    def multithreaded_data_download(self, tickers):
+        """ Downloads historical data using multiple threads, max threads are set in the class attributes.
 
         :param tickers: A list of company tickers.
         :return: none
@@ -263,25 +263,25 @@ class HistoricalDataHandler:
         conn.close()
 
         log.info("Saving/updating ticker historical data to local database.")
-        download_processes = []
+        download_threads = []
         start_time = time.time()
 
-        # Create a number of processes to download data concurrently, to speed up the process.
-        for process_id in range(0, self.max_processes):
-            download_process = threading.Thread(target=self.download_historical_data_to_sqlite,
-                                                args=(tickers, process_id))
-            download_processes.append(download_process)
-            download_process.start()
+        # Create a number of threads to download data concurrently, to speed up the thread.
+        for thread_id in range(0, self.max_threads):
+            download_thread = threading.Thread(target=self.download_historical_data_to_sqlite,
+                                                args=(tickers, thread_id))
+            download_threads.append(download_thread)
+            download_thread.start()
 
-        # Wait for all processes to finish downloading data before continuing.
-        for download_process in download_processes:
-            download_process.join()
+        # Wait for all threads to finish downloading data before continuing.
+        for download_thread in download_threads:
+            download_thread.join()
         total_time = dt.timedelta(seconds=(time.time() - start_time))
         log.info(f"Historical data checks completed in: {total_time}")
 
 
 def split_list(tickers, num_portions, portion_id):
-    """ Splits a list into equal sections, returns the portion of the list needed by that process/thread.
+    """ Splits a list into equal sections, returns the portion of the list needed by that thread/thread.
 
     :param tickers: A list of company tickers.
     :param num_portions: The total number of portions to split the list between.
