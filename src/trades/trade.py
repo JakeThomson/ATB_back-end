@@ -1,7 +1,8 @@
 import copy
 
+
 class Trade:
-    def __init__(self, backtest_id, ticker, historical_data, buy_date, buy_price, share_qty, investment_total, take_profit, stop_loss, triggered_indicators):
+    def __init__(self, backtest_id, ticker, historical_data, buy_date, buy_price, share_qty, investment_total, take_profit, stop_loss, triggered_indicators, figure):
         self.trade_id = None
         self.backtest_id = backtest_id,
         self.ticker = ticker
@@ -18,7 +19,8 @@ class Trade:
         self.take_profit = take_profit
         self.stop_loss = stop_loss
         self.triggered_indicators = triggered_indicators
-        self.figure = {"graph": "placeholder"}
+        self.simpleFigure = {"graph": "placeholder"}
+        self.figure = figure
         self.figure_pct = 0
 
     def to_JSON_serializable(self):
@@ -28,4 +30,5 @@ class Trade:
         trade_dict['historical_data'].index = trade_dict['historical_data'].index.strftime('%Y-%m-%d %H:%M:%S').copy()
         trade_dict['historical_data'].reset_index(level="date", inplace=True)
         trade_dict['historical_data'] = trade_dict['historical_data'].to_dict(orient="list")
+        trade_dict['figure'] = trade_dict['figure'].to_json()
         return trade_dict

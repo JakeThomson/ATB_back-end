@@ -1,7 +1,8 @@
 from src.data_handlers import request_handler
 from src.data_handlers.historical_data_handler import HistoricalDataHandler, split_list
 from src.strategy.technical_analysis import BaseTechnicalAnalysisModule
-from src.exceptions.custom_exceptions import InvalidHistoricalDataIndexError, InvalidStrategyConfigException
+from src.exceptions.custom_exceptions import InvalidHistoricalDataIndexError, InvalidStrategyConfigException, \
+    InvalidHistoricalDataError
 import logging
 
 logger = logging.getLogger("strategy")
@@ -35,9 +36,9 @@ class Strategy:
         self.backtest = backtest
         self.hist_data_handler = HistoricalDataHandler(start_date=backtest.start_date)
         self.max_lookback_range_weeks = strategy_config['lookbackRangeWeeks']
-        self.technical_analysis = self.init_technical_analysis(strategy_config)
+        self.technical_analysis = self._init_technical_analysis(strategy_config)
 
-    def init_technical_analysis(self, config):
+    def _init_technical_analysis(self, config):
         """ Dynamically creates an order of execution for the analysis segment of the strategy defined in the provided
             config JSON by using the decorator pattern.
 
@@ -77,8 +78,8 @@ class Strategy:
                 stock_df = self.hist_data_handler.get_hist_dataframe(ticker, self.backtest.backtest_date,
                                                                      self.max_lookback_range_weeks)
                 stock_df.attrs['triggered_indicators'] = []
-            except InvalidHistoricalDataIndexError:
-                # If there isn't enough data recorded for this ticker, skip it.
+            except (InvalidHistoricalDataIndexError, InvalidHistoricalDataError):
+                # If there isn't enough data recorded for this ticker, or it is marked as invalid, skip it.
                 continue
 
             try:
@@ -95,3 +96,7 @@ class Strategy:
             if stock_df.attrs['triggered_indicators']:
                 potential_trades.append((stock_df, fig))
         return
+
+    def update_figure(self, trade):
+        fig = self.technical_analysis.update_figure(trade)
+        return fig

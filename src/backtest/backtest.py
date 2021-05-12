@@ -21,7 +21,7 @@ class Backtest:
         :param properties: a dict object holding all properties of the backtest.
         """
         self.start_date = settings['startDate']
-        self.end_date = settings['endDate']
+        self._end_date = settings['endDate']
         self.backtest_date = self.start_date
         self.start_balance = settings['startBalance']
         self.total_balance = self.start_balance
@@ -33,7 +33,7 @@ class Backtest:
         self.sl_limit = settings['stopLoss']
         self.market_index = settings['marketIndex']
         self.strategy_id = settings['strategyId']
-        self.is_paused = request_handler.get("/backtest_settings/is_paused").json().get("isPaused")
+        self._is_paused = request_handler.get("/backtest_settings/is_paused").json().get("isPaused")
         self.total_profit_loss_graph = create_initial_profit_loss_figure(self.start_date,
                                                                          self.start_balance)
         self.state = "active"
@@ -51,7 +51,7 @@ class Backtest:
         backtest_dict = copy.deepcopy(self.__dict__)
         backtest_dict['backtest_date'] = str(backtest_dict["backtest_date"])
         backtest_dict['start_date'] = str(backtest_dict["start_date"])
-        backtest_dict['end_date'] = str(backtest_dict["end_date"])
+        backtest_dict['_end_date'] = str(backtest_dict["_end_date"])
         return backtest_dict
 
     def increment_date(self):
@@ -88,8 +88,8 @@ class Backtest:
         backtest_start_time = time.time()
 
         last_state = "executing"
-        while self.backtest_date < self.end_date and self.state == "active":
-            if self.is_paused:
+        while self.backtest_date < self._end_date and self.state == "active":
+            if self._is_paused:
                 # Print the state of the application if it has changed since the last loop.
                 if last_state != "paused":
                     logger.info("Backtest has been paused")
@@ -111,9 +111,9 @@ class Backtest:
                 # Try to invest in new stocks, move to the next day if nothing good is found or if balance is too low.
                 try:
                     # Select the stock that has the most confidence from the analysis.
-                    interesting_df, fig = trade_handler.analyse_historical_data()
+                    interesting_df, analysis_fig = trade_handler.analyse_historical_data()
                     # Go to automatically open an order for that stock using the rules set.
-                    trade = trade_handler.create_trade(interesting_df)
+                    trade = trade_handler.create_trade(interesting_df, analysis_fig)
                     trade_handler.make_trade(trade)
 
                 except (TradeCreationError, TradeAnalysisError) as e:
@@ -136,6 +136,12 @@ class Backtest:
 
 class BacktestController:
     def __init__(self, sio, tickers):
+        """ Constructor for the backtest controller, automatically starts a new backtest on instantiation and also sets
+            up socket listeners for stop/restart events.
+
+        :param sio: The socket connection established for the application.
+        :param tickers: Array of tickers
+        """
         self.socket = sio
         self.tickers = tickers
         self.backtest = None
@@ -144,14 +150,14 @@ class BacktestController:
         @self.socket.on('playpause')
         def toggle_pause(data):
             """ Toggle the pause state of the backtest. """
-            self.backtest.is_paused = data['isPaused']
+            self.backtest._is_paused = data['isPaused']
 
         @self.socket.on('restartBacktest')
         def restart_backtest():
             """ Stops the current backtest, removes it from self.backtest, and then starts a new backtest. """
-            self.get_settings()
+            self._get_settings()
             self.stop_backtest()
-            self.start_backtest()
+            self._start_backtest()
 
         @self.socket.on('stopBacktest')
         def manual_stop_backtest(strategy_id, msg):
@@ -160,22 +166,25 @@ class BacktestController:
                 self.stop_backtest()
                 logger.info(msg)
 
-        self.get_settings()
-        thread = Thread(target=self.start_backtest)
+        self._get_settings()
+        thread = Thread(target=self._start_backtest)
         thread.start()
 
-    def start_backtest(self):
+    def _start_backtest(self):
         """ Instantiates a new backtest object using the most recently updated properties, and then runs it. """
         self.backtest = Backtest(self.settings)
         self.backtest.start_backtest(self.tickers)
 
     def stop_backtest(self):
+        """ Sets the stopping flag in the backtest so that the thread can safely exit the loop early, then deletes the
+            backtest object from the controller. """
         self.backtest.state = "stopping" if self.backtest.state == "active" else "inactive"
         while self.backtest.state != "inactive":
             time.sleep(0.3)
         self.backtest = None
 
-    def get_settings(self):
+    def _get_settings(self):
+        """ Gets the most up to date settings from the database and saves them to self. """
         settings = request_handler.get("/backtest_settings").json()
         settings['startDate'] = dt.datetime.strptime(settings['startDate'], '%Y-%m-%dT%H:%M:%S.%fZ')
         settings['endDate'] = dt.datetime.strptime(settings['endDate'], '%Y-%m-%dT%H:%M:%S.%fZ')

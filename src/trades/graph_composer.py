@@ -137,7 +137,7 @@ def update_profit_loss_graph(backtest):
     # difference range, and slowly fades out as it gets further away until it reaches 30%.
     if backtest.start_balance * 1.3 >= backtest.total_balance >= backtest.start_balance * 1.1:
         m = -1 / (backtest.start_balance * 0.2)
-        alpha = m * (backtest.total_balance - (backtest.start_balance * 1.1)) + 1
+        alpha = round(m * (backtest.total_balance - (backtest.start_balance * 1.1)) + 1,3)
     elif backtest.total_balance > backtest.start_balance * 1.3:
         alpha = 0
     elif backtest.total_balance == backtest.start_balance:

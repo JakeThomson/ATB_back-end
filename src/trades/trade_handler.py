@@ -1,4 +1,5 @@
 from src.data_handlers.historical_data_handler import HistoricalDataHandler
+from src.data_validators import date_validator
 from src.trades import graph_composer
 from src.exceptions.custom_exceptions import TradeCreationError, TradeAnalysisError, InvalidHistoricalDataIndexError
 from src.data_handlers import request_handler
@@ -11,6 +12,8 @@ import logging
 import random
 import time
 import threading
+import plotly.graph_objects as go
+import numpy as np
 
 logger = logging.getLogger("trade_handler")
 
@@ -41,8 +44,8 @@ class TradeHandler:
         # Create a number of threads to download data concurrently, to speed up the process.
         for thread_id in range(0, self.max_strategy_threads):
             download_thread = threading.Thread(target=self.strategy.execute,
-                                                      args=(self.tickers, potential_trades,
-                                                            self.max_strategy_threads, thread_id))
+                                               args=(self.tickers, potential_trades,
+                                                     self.max_strategy_threads, thread_id))
             download_threads.append(download_thread)
             download_thread.start()
 
@@ -51,7 +54,7 @@ class TradeHandler:
             download_thread.join()
 
         total_time = dt.timedelta(seconds=(time.time() - start_time))
-        logger.debug(f"Strategy finished in {total_time}")
+        logger.debug(f"Strategy executed in {total_time}")
 
         if not potential_trades:
             # No interesting stocks could be found for this date.
@@ -100,14 +103,45 @@ class TradeHandler:
         sl = (investment_total * self.backtest.sl_limit) / qty
         return tp, sl
 
-    def create_trade(self, interesting_df):
+    def create_trade(self, interesting_df, analysis_fig):
         """ Creates a trade object using all information gathered.
 
+        :param analysis_fig: A figure object holding the details of the triggered indicators.
         :param interesting_df: A dataframe holding all data on the stock to be invested in.
         :return trade: A trade object holding all information on the opened trade.
         """
         buy_price, qty, investment_total = self.calculate_num_shares_to_buy(interesting_df)
         tp, sl = self.calculate_tp_sl(qty, investment_total)
+
+        # Update yaxis range if tp/sl limits are higher or lower than the current.
+        yaxis_range = analysis_fig.layout.yaxis['range']
+        if tp >= yaxis_range[1]:
+            analysis_fig.layout.yaxis['range'] = (yaxis_range[0], tp + (yaxis_range[1] - yaxis_range[0]) * 0.04)
+        if sl <= yaxis_range[0]:
+            analysis_fig.layout.yaxis['range'] = (sl - (yaxis_range[1] - yaxis_range[0]) * 0.04, yaxis_range[1])
+
+        # Add the stop loss/take profit lines and the buy marker to the figure.
+        analysis_fig.add_traces([go.Scatter(x=[interesting_df.index[-1]], y=[buy_price], showlegend=False,
+                                            hoverinfo="skip", mode="markers", name="buysell",
+                                            marker=dict(color=["lawngreen", "orangered"],
+                                                        symbol=["triangle-up", "triangle-down"], size=10,
+                                                        line=dict(color=["darkgreen", "darkred"], width=1.5))),
+                                 go.Scatter(
+                                     x=[interesting_df.index[-2],
+                                        date_validator.validate_date(interesting_df.index[-2] + np.timedelta64(7, 'D'),
+                                                                     -1)],
+                                     y=[tp, tp], showlegend=True,
+                                     hoverinfo="skip", mode="lines", name="TP/SL", legendgroup="tp/sl",
+                                     line=dict(color="rgba(0, 100, 0, 0.5)", dash="dot", width=1.3)),
+                                 go.Scatter(
+                                     x=[interesting_df.index[-2],
+                                        date_validator.validate_date(interesting_df.index[-2] + np.timedelta64(7, 'D'),
+                                                                     -1)],
+                                     y=[sl, sl], showlegend=False,
+                                     hoverinfo="skip", mode="lines", name="TP/SL", legendgroup="tp/sl",
+                                     line=dict(color="rgba(1000, 0, 0, 0.5)", dash="dot", width=1.3)),
+                                 ])
+
         trade = Trade(backtest_id=self.backtest.backtest_id,
                       ticker=interesting_df.attrs['ticker'],
                       historical_data=interesting_df,
@@ -117,9 +151,10 @@ class TradeHandler:
                       investment_total=investment_total,
                       take_profit=tp,
                       stop_loss=sl,
-                      triggered_indicators=interesting_df.attrs['triggered_indicators'])
+                      triggered_indicators=interesting_df.attrs['triggered_indicators'],
+                      figure=analysis_fig)
         # Draws the open trade graph using the new trade object.
-        trade.figure, trade.figure_pct = graph_composer.draw_open_trade_graph(trade)
+        trade.simpleFigure, trade.figure_pct = graph_composer.draw_open_trade_graph(trade)
         return trade
 
     def make_trade(self, trade):
@@ -148,7 +183,7 @@ class TradeHandler:
         :return: none
         """
         logger.info(f"Closing trade {trade.ticker} with {'profit' if trade.profit_loss > 0 else 'loss'} "
-                    f"of {round(trade.profit_loss,2)}, which was triggered by {', '.join(trade.triggered_indicators)}")
+                    f"of {round(trade.profit_loss, 2)}, which was triggered by {', '.join(trade.triggered_indicators)}")
         trade.sell_price = trade.current_price
         trade.sell_date = self.backtest.backtest_date
         self.backtest.available_balance += trade.sell_price * trade.share_qty
@@ -157,7 +192,12 @@ class TradeHandler:
         self.backtest.total_balance += trade.profit_loss
         self.backtest.total_profit_loss = self.backtest.total_balance - self.backtest.start_balance
         self.backtest.total_profit_loss_pct = self.backtest.total_profit_loss / self.backtest.start_balance * 100
-        trade.figure = graph_composer.draw_closed_trade_graph(trade)
+        trade.simpleFigure = graph_composer.draw_closed_trade_graph(trade)
+        # Add the close trade marker to the figure.
+        for i, trace in enumerate(trade.figure.data):
+            if trace['name'] == "buysell":
+                trace['x'] = np.append(trace['x'], trade.sell_date)
+                trace['y'] = np.append(trace['y'], trade.sell_price)
 
     def analyse_open_trades(self):
         """ Iterates through all trades in the open_trades array stored in the trade_handler's properties. Sells trades
@@ -171,15 +211,19 @@ class TradeHandler:
         # objects in separate arrays.
         json_open_trades_array = []
         json_closed_trades_array = []
-        for i, trade in enumerate(self.open_trades):
+        for i, trade in reversed(list(enumerate(self.open_trades))):
             # Get the respective day's data for the targeted trade from the SQLite tables and append to historical
             # data, trimming off the first column to keep the dataframe short.
-            new_data = self.hist_data_handler.get_hist_dataframe(trade.ticker, self.backtest.backtest_date, num_weeks=0, num_days=1)
+            new_data = self.hist_data_handler.get_hist_dataframe(trade.ticker, self.backtest.backtest_date, num_weeks=0,
+                                                                 num_days=1)
             trade.historical_data = trade.historical_data[1:].append(new_data)
             trade.current_price = trade.historical_data['close'].iloc[-1]
             trade.profit_loss = (trade.current_price * trade.share_qty) - trade.investment_total
             trade.profit_loss_pct = (trade.profit_loss / trade.investment_total) * 100
-            trade.figure, trade.figure_pct = graph_composer.draw_open_trade_graph(trade)
+            trade.simpleFigure, trade.figure_pct = graph_composer.draw_open_trade_graph(trade)
+
+            # Get all analysis modules that triggered this trade to update their traces in the figure.
+            trade.figure = self.strategy.update_figure(trade)
 
             if trade.current_price > trade.take_profit or trade.current_price < trade.stop_loss:
                 # Close the trade
@@ -188,12 +232,10 @@ class TradeHandler:
                 # Add json object to closed trades array.
                 json_trade = trade.to_JSON_serializable()
                 json_closed_trades_array.append(json_trade)
-                pass
             else:
-                # Add updarted json object to open trades array.
+                # Add updated json object to open trades array.
                 json_trade = trade.to_JSON_serializable()
                 json_open_trades_array.append(json_trade)
-                pass
 
         # Generate profit/loss graph.
         self.backtest.total_profit_loss_graph = graph_composer.update_profit_loss_graph(self.backtest)

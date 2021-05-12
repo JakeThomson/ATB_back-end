@@ -13,6 +13,13 @@ class InvalidHistoricalDataIndexError(Exception):
         super().__init__(self.message)
 
 
+class InvalidHistoricalDataError(Exception):
+    """ Exception raised when a start date index value is a date that comes before the very first entry in a table."""
+    def __init__(self, ticker):
+        self.message = f"'{ticker}' is marked as invalid, will not analyse."
+        super().__init__(self.message)
+
+
 class TradeCreationError(Exception):
     """ Exception raised when a trade cannot be created for a given reason."""
     def __init__(self, reason):

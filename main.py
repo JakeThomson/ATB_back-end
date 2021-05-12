@@ -43,16 +43,23 @@ def disconnect():
 
 @sio.on('getAnalysisModules')
 def get_analysis_modules(req):
+    """ Get a list of all available modules in the modules directory and the data for their configuration forms. """
     log.info("Server requested analysis modules")
     path = "./src/strategy/technical_analysis_modules/"
+
+    # Get list of module names (the names of the module folders).
     analysis_modules = [item for item in os.listdir(path) if os.path.isdir(os.path.join(path, item))]
+    # Initialise empty dictionary object to be sent to the UI.
     result = {}
 
+    # Iterate through all the analysis modules and grab their configuration form data.
     for module in analysis_modules:
         with open(f'{path}/{module}/form_configuration.json') as f:
             data = json.load(f)
+            # Save the module name and config form data as a key:value pair in the dict.
             result[module] = data
 
+    # Return the dict to the data access api, which will be sent to the UI and cached in the DB.
     return result
 
 
@@ -72,7 +79,6 @@ def handle_exit(signum, frame):
 
 # Main code
 if __name__ == '__main__':
-    # deadline_reminder.print_deadline_reminder()
 
     # Signal handlers listen for events that attempt to kill the program (CTRL+C, PyCharm 'STOP', etc.).
     # IMPORTANT!! If using PyCharm, you must have 'kill.windows.processes.softly' set to true in the registry.
@@ -81,14 +87,15 @@ if __name__ == '__main__':
 
     # Download/update historical data.
     start_date = dt.datetime(2009, 1, 1)
-    hist_data_mgr = HistoricalDataHandler(start_date=start_date, market_index="S&P500", max_processes=7)
+    hist_data_mgr = HistoricalDataHandler(start_date=start_date, market_index="S&P500", max_threads=7)
     tickers = hist_data_mgr.get_tickers()
-    # hist_data_mgr.multiprocess_data_download(tickers)
+    hist_data_mgr.multithreaded_data_download(tickers)
 
     # Read command line argument to determine what environment URL to hit for the data access api.
     environment = str(sys.argv[1]) if len(sys.argv) == 2 else "prod"
     request_handler.set_environment(sio, environment)
 
+    # Set up backtest controller, which handles all backtest operations (restarts etc.)
     backtest_controller = BacktestController(sio, tickers)
 
     while 1:  # Forces main thread to stay alive, so that the signal handler still exists.
