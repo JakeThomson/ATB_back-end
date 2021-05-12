@@ -1,4 +1,4 @@
-# Backtesting Platform
+# Algorithmic Trading Backtesting System - Backtesting Platform
 
 This application is the backend code that runs the backtesting platform within the Algorithmic Trading Backtesting 
 System. The other components of the system can be found here:
@@ -6,7 +6,7 @@ System. The other components of the system can be found here:
 - [Data Access API](https://github.com/JakeThomson/ATB_data-access-api)
 
 The system was built entirely by me in 10 weeks for my final year project.
-To find out more about this and other projects things I've worked on, check out my website
+To find out more about this and other projects I've worked on, check out my website
 [jake-t.codes](https://jake-t.codes)!
 
 ## Installation
@@ -18,7 +18,7 @@ To find out more about this and other projects things I've worked on, check out 
 
 2. Clone git repository onto your machine.
 ```
-git clone https://github.com/JakeThomson/ATB_data-access-api
+git clone https://github.com/JakeThomson/ATB_back-end
 ```
 
 3. Go to project directory in cmd/terminal.
